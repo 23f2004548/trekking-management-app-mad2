@@ -37,16 +37,12 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="container py-4">
-        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-            <div>
-                <h2 class="fw-bold mb-0">Admin Dashboard</h2>
-                <p class="text-muted small mb-0">System overview and trekking operations</p>
-            </div>
+    <div>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="fw-bold mb-0">Dashboard</h4>
             <div class="d-flex gap-2">
                 <button class="btn btn-primary btn-sm" @click="router.push('/admin/treks')">+ Add Trek</button>
-                <button class="btn btn-outline-primary btn-sm" @click="router.push('/admin/staff')">+ Add Staff</button>
-                <button class="btn btn-outline-secondary btn-sm" @click="router.push('/admin/reports')">View Reports</button>
+                <button class="btn btn-outline-secondary btn-sm" @click="router.push('/admin/staff')">+ Add Staff</button>
             </div>
         </div>
 
@@ -56,37 +52,37 @@ onMounted(() => {
         </div>
         <div v-else>
             <div class="row g-3 mb-4">
-                <div class="col-md-3">
-                    <StatsCard card_title="Total Treks" :card_value="stats.total_treks || 0" />
+                <div class="col-3">
+                    <StatsCard card_title="Total Treks" :card_value="stats.total_treks || 0" icon="bi-suitcase" />
                 </div>
-                <div class="col-md-3">
-                    <StatsCard card_title="Trekkers (Users)" :card_value="stats.total_users || 0" />
+                <div class="col-3">
+                    <StatsCard card_title="Total Users" :card_value="stats.total_users || 0" icon="bi-people" />
                 </div>
-                <div class="col-md-3">
-                    <StatsCard card_title="Trek Staff" :card_value="stats.total_staff || 0" />
+                <div class="col-3">
+                    <StatsCard card_title="Total Staff" :card_value="stats.total_staff || 0" icon="bi-person-check" />
                 </div>
-                <div class="col-md-3">
-                    <StatsCard card_title="Total Bookings" :card_value="stats.total_bookings || 0" />
+                <div class="col-3">
+                    <StatsCard card_title="Total Bookings" :card_value="stats.total_bookings || 0" icon="bi-bookmark-check" />
                 </div>
-                <div class="col-md-3">
-                    <StatsCard card_title="Open Treks" :card_value="stats.open_treks || 0" />
+                <div class="col-3">
+                    <StatsCard card_title="Open Treks" :card_value="stats.open_treks || 0" icon="bi-compass" />
                 </div>
-                <div class="col-md-3">
-                    <StatsCard card_title="Active Bookings" :card_value="stats.active_bookings || 0" />
+                <div class="col-3">
+                    <StatsCard card_title="Active Bookings" :card_value="stats.active_bookings || 0" icon="bi-calendar-check" />
                 </div>
-                <div class="col-md-3">
-                    <StatsCard card_title="Deactivated Users" :card_value="stats.blocked_users || 0" />
+                <div class="col-3">
+                    <StatsCard card_title="Blocked Users" :card_value="stats.blocked_users || 0" icon="bi-person-x" />
                 </div>
-                <div class="col-md-3">
-                    <StatsCard card_title="Blacklisted Staff" :card_value="stats.blacklisted_staff || 0" />
+                <div class="col-3">
+                    <StatsCard card_title="Blacklisted Staff" :card_value="stats.blacklisted_staff || 0" icon="bi-shield-x" />
                 </div>
             </div>
 
-            <!-- Recent Treks Overview -->
-            <div class="card p-3 mb-4 shadow-sm border-0">
+            <!-- Recent Treks Overview (Page Card) -->
+            <div class="page-card p-3 shadow-sm mb-4">
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="fw-bold mb-0">Recent Trekking Routes</h5>
-                    <router-link to="/admin/treks" class="small text-decoration-none">View All Treks →</router-link>
+                    <div class="section-title">Recent Trekking Routes</div>
+                    <router-link to="/admin/treks" class="small text-decoration-none fw-semibold">View All →</router-link>
                 </div>
 
                 <div v-if="recentTreks.length === 0" class="text-muted text-center py-3">No treks available yet</div>

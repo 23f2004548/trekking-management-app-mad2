@@ -39,7 +39,7 @@ async function updateTrekStatus(trekId, status) {
         await axios.put(`${BASE_URL}/staff/treks/${trekId}`, { status }, {
             headers: { Authorization: "Bearer " + token }
         })
-        success.value = `Trek status marked as ${status}`
+        success.value = `Trek marked as ${status}`
         fetchDashboard()
     } catch (err) {
         error.value = err.response?.data?.message || "Failed to update trek status"
@@ -59,7 +59,7 @@ async function saveSlots() {
         await axios.put(`${BASE_URL}/staff/treks/${selectedTrek.value.id}`, { available_slots: newSlots.value }, {
             headers: { Authorization: "Bearer " + token }
         })
-        success.value = "Available slots updated successfully"
+        success.value = "Slots updated successfully"
         showSlotModal.value = false
         fetchDashboard()
     } catch (err) {
@@ -81,17 +81,8 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="container py-4">
-        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-            <div>
-                <h2 class="fw-bold mb-0">Trek Staff Operations Dashboard</h2>
-                <p class="text-muted small mb-0">
-                    Logged in as: <strong>{{ stats.staff?.name || 'Trek Staff' }}</strong> 
-                    ({{ stats.staff?.specialization || 'Expedition Guide' }})
-                </p>
-            </div>
-            <button class="btn btn-outline-primary btn-sm" @click="router.push('/staff/profile')">Edit My Profile</button>
-        </div>
+    <div>
+        <h4 class="fw-bold mb-3">Welcome {{ stats.staff?.name || 'Staff' }}</h4>
 
         <div v-if="success" class="alert alert-success py-2 small alert-dismissible">
             {{ success }}
@@ -107,23 +98,23 @@ onMounted(() => {
         </div>
 
         <div v-else>
-            <!-- Stats Cards -->
+            <!-- Stats Cards in MAD 1 style -->
             <div class="row g-3 mb-4">
-                <div class="col-md-4">
-                    <StatsCard card_title="My Assigned Treks" :card_value="stats.assigned_treks || 0" />
+                <div class="col-4">
+                    <StatsCard card_title="Assigned Treks" :card_value="stats.assigned_treks || 0" icon="bi-compass" />
                 </div>
-                <div class="col-md-4">
-                    <StatsCard card_title="Open Treks" :card_value="stats.open_treks || 0" />
+                <div class="col-4">
+                    <StatsCard card_title="Total Participants" :card_value="stats.total_participants || 0" icon="bi-people" />
                 </div>
-                <div class="col-md-4">
-                    <StatsCard card_title="Registered Trekkers" :card_value="stats.total_participants || 0" />
+                <div class="col-4">
+                    <StatsCard card_title="Open Treks" :card_value="stats.open_treks || 0" icon="bi-map" />
                 </div>
             </div>
 
             <!-- Assigned Treks List -->
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                    <h5 class="fw-bold mb-0">My Assigned Expeditions</h5>
+            <div class="page-card p-3 shadow-sm mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="section-title">My Assigned Expeditions</div>
                     <button class="btn btn-sm btn-outline-secondary" @click="fetchDashboard">Refresh</button>
                 </div>
 
@@ -135,10 +126,10 @@ onMounted(() => {
                                 <th>Trek Name</th>
                                 <th>Location</th>
                                 <th>Dates</th>
-                                <th>Available / Total Slots</th>
-                                <th>Registered Trekkers</th>
-                                <th>Current Status</th>
-                                <th>Manage Status & Slots</th>
+                                <th>Slots</th>
+                                <th>Registered</th>
+                                <th>Status</th>
+                                <th>Manage Operations</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -152,7 +143,7 @@ onMounted(() => {
                                     <button class="btn btn-link btn-sm p-0 ms-1" title="Update Slots" @click="openSlotModal(t)">✏️</button>
                                 </td>
                                 <td>
-                                    <span class="badge bg-info text-dark fs-6">{{ t.registered_trekkers }} Trekkers</span>
+                                    <span class="badge bg-light text-dark border">{{ t.registered_trekkers }} Trekkers</span>
                                 </td>
                                 <td>
                                     <span class="badge" :class="getBadge(t.status)">{{ t.status }}</span>
@@ -178,24 +169,24 @@ onMounted(() => {
                                             class="btn btn-sm btn-outline-success"
                                             @click="updateTrekStatus(t.id, 'Completed')"
                                         >
-                                            Mark Completed
+                                            Complete
                                         </button>
                                         <button
                                             v-if="t.status === 'Open'"
                                             class="btn btn-sm btn-outline-danger"
                                             @click="updateTrekStatus(t.id, 'Closed')"
                                         >
-                                            Close Slots
+                                            Close
                                         </button>
                                         <button
                                             v-if="t.status === 'Closed'"
                                             class="btn btn-sm btn-outline-success"
                                             @click="updateTrekStatus(t.id, 'Open')"
                                         >
-                                            Open Slots
+                                            Open
                                         </button>
                                         <button
-                                            class="btn btn-sm btn-outline-dark"
+                                            class="btn btn-sm btn-outline-secondary"
                                             @click="router.push(`/staff/participants?trek_id=${t.id}`)"
                                         >
                                             Participants
@@ -204,7 +195,7 @@ onMounted(() => {
                                 </td>
                             </tr>
                             <tr v-if="assignedTreks.length === 0">
-                                <td colspan="8" class="text-center text-muted py-4">No treks assigned to you currently</td>
+                                <td colspan="8" class="text-center text-muted py-4">No treks currently assigned to you</td>
                             </tr>
                         </tbody>
                     </table>
@@ -223,7 +214,7 @@ onMounted(() => {
                     <form @submit.prevent="saveSlots">
                         <div class="modal-body">
                             <p class="small text-muted mb-3">
-                                <strong>{{ selectedTrek?.name }}</strong> (Total capacity: {{ selectedTrek?.total_slots }} slots)
+                                <strong>{{ selectedTrek?.name }}</strong> (Total Capacity: {{ selectedTrek?.total_slots }})
                             </p>
                             <div class="mb-3">
                                 <label class="form-label fw-semibold">Available Slots</label>
@@ -235,7 +226,6 @@ onMounted(() => {
                                     class="form-control"
                                     required
                                 />
-                                <div class="form-text small">Cannot exceed total slots of {{ selectedTrek?.total_slots }}.</div>
                             </div>
                         </div>
                         <div class="modal-footer">

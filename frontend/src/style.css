@@ -1,9 +1,128 @@
 body {
-    background-color: #f8f9fa;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: #e6e6e6;
+    min-width: 1200px;
+    overflow-x: auto;
 }
 
-.auth-card {
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+body.landing-page {
+    background-color: #f1ead9;
+    background-image: url('/trek2.jpg');
+    background-size: cover;
+    background-position: center;
+}
+.landing-page main {
+    border-radius: 10px;
+    padding: 80px 20px;
+    color: #ffffff;
+    text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.85);
+}
+.landing-page #community #button .btn {
+    background-color: #ffffff;
+    color: #333333;
+    font-weight: bold;
+    border: none;
+    padding: 10px 30px;
+}
+.landing-page #community #button .btn:hover {
+    background-color: #e6e6e6;
+}
+#title {
+    font-size: 10vw;
+}
+
+body.auth-page {
+    background-color: #f5f7fb;
+}
+.login-wrap {
+    min-height: calc(100vh - 58px);
+    background-image: url('/trek3.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+.register-wrap {
+    min-height: calc(100vh - 58px);
+    background-image: url('/trekking1.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+.login-card {
+    max-width: 370px;
+    width: 100%;
+}
+.register-card {
+    max-width: 390px;
+    width: 100%;
+}
+.page-header {
+    background-color: #ffffff;
+    border-bottom: 1px solid #dfe3ea;
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+}
+
+.sidebar {
+    min-height: 100vh;
+    background-color: #cfcfcf;
+    color: #31302e;
+    border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+.sidebar .border-bottom {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+.sidebar .nav-link {
+    color: #31302e;
+    border-radius: 0.5rem;
+    margin-bottom: 0.35rem;
+}
+.sidebar .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.9);
+    color: #31302e;
+}
+.sidebar .nav-link.active {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #040404;
+}
+
+.page-topbar {
+    background-color: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+}
+.section-title {
+    font-weight: 700;
+}
+
+.stat-card {
+    border: 1px solid #e5e7eb;
+    background-color: #ffffff;
+    border-radius: 0.5rem;
+}
+.stat-number {
+    font-size: 1.9rem;
+    font-weight: 700;
+}
+.stat-icon {
+    width: 42px;
+    height: 42px;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+}
+.page-card {
+    border: 1px solid #e5e7eb;
+    background-color: #ffffff;
+    border-radius: 0.5rem;
+}
+.info-label {
+    color: #6b7280;
+    font-size: 0.9rem;
+}
+.info-value {
+    color: #111827;
+    font-weight: 600;
+    font-size: 0.9rem;
 }

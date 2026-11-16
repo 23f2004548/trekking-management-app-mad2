@@ -6,7 +6,7 @@ import axios from "axios"
 const router = useRouter()
 const BASE_URL = "http://localhost:5000"
 
-const username = ref("")
+const email = ref("")
 const password = ref("")
 const error = ref("")
 const loading = ref(false)
@@ -16,15 +16,16 @@ async function login() {
     loading.value = true
     try {
         const postdata = {
-            username: username.value,
+            username: email.value,
             password: password.value
         }
         const res = await axios.post(BASE_URL + '/login', postdata)
         if (res.status === 200) {
             localStorage.setItem("token", res.data.access_token)
             localStorage.setItem("role", res.data.role)
+            localStorage.setItem("user_name", res.data.user?.name || "User")
             
-            // Redirect users to role-specific dashboards
+            // Role-specific redirect
             if (res.data.role === 'admin') {
                 router.push('/admin/dashboard')
             } else if (res.data.role === 'staff') {
@@ -34,41 +35,71 @@ async function login() {
             }
         }
     } catch (err) {
-        error.value = err.response?.data?.message || "Invalid username or password"
+        error.value = err.response?.data?.message || "Invalid credentials"
     } finally {
         loading.value = false
     }
 }
+
+function resetForm() {
+    email.value = ""
+    password.value = ""
+    error.value = ""
+}
 </script>
 
 <template>
-    <div class="container py-5 d-flex justify-content-center">
-        <div class="card p-4 auth-card" style="width: 100%; max-width: 440px;">
-            <h3 class="text-center fw-bold mb-1">Sign In</h3>
-            <p class="text-muted text-center small mb-4">Trekking Management Portal</p>
-            
-            <form @submit.prevent="login">
-                <div class="mb-3">
-                    <label for="username" class="form-label fw-semibold">Username or Email</label>
-                    <input type="text" class="form-control" id="username" v-model="username" placeholder="admin@gmail.com" required />
+    <div class="auth-page min-vh-100">
+        <div class="page-header">Trekking Management Application</div>
+
+        <div class="container login-wrap d-flex align-items-center justify-content-center py-4">
+            <div class="card login-card shadow-sm">
+                <div class="card-body p-4 p-md-5">
+                    <h3 class="text-center fw-bold mb-4">Login</h3>
+
+                    <div v-if="error" class="alert alert-danger py-2 small">{{ error }}</div>
+
+                    <form @submit.prevent="login">
+                        <div class="mb-3">
+                            <input
+                                v-model="email"
+                                type="text"
+                                class="form-control"
+                                placeholder="Email or Username"
+                                required
+                            />
+                        </div>
+
+                        <div class="mb-3">
+                            <input
+                                v-model="password"
+                                type="password"
+                                class="form-control"
+                                placeholder="Password"
+                                required
+                            />
+                        </div>
+
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="rememberMe">
+                            <label class="form-check-label small" for="rememberMe">Remember me</label>
+                        </div>
+
+                        <div class="d-grid gap-2 d-flex justify-content-between">
+                            <button type="submit" class="btn btn-primary px-4" :disabled="loading">
+                                <span v-if="loading" class="spinner-border spinner-border-sm me-1"></span>
+                                Login
+                            </button>
+                            <button type="button" class="btn btn-danger px-4" @click="resetForm">Reset</button>
+                        </div>
+
+                        <p class="text-center mt-4 mb-0 small">
+                            Don't have an account? 
+                            <a @click.prevent="router.push('/register')" href="#" class="text-primary text-decoration-none fw-semibold">Register here</a>
+                        </p>
+                    </form>
                 </div>
-                <div class="mb-3">
-                    <label for="password" class="form-label fw-semibold">Password</label>
-                    <input type="password" class="form-control" id="password" v-model="password" placeholder="••••••••" required />
-                </div>
-                
-                <button type="submit" class="btn btn-primary w-100 py-2 mt-2" :disabled="loading">
-                    <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
-                    Sign In
-                </button>
-                
-                <div v-if="error" class="alert alert-danger mt-3 py-2 small">{{ error }}</div>
-            </form>
-            
-            <p class="text-center mt-4 small mb-0">
-                Are you a new trekker? 
-                <a @click.prevent="router.push('/register')" href="#" class="text-primary text-decoration-none fw-semibold">Register here</a>
-            </p>
+            </div>
         </div>
     </div>
 </template>
