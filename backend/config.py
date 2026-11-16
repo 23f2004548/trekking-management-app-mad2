@@ -5,7 +5,7 @@ class Config():
 class LocalDevelopmentConfig(Config):
     DEBUG = True
     SQLALCHEMY_DATABASE_URI = 'sqlite:///trekking.db'
-    JWT_SECRET_KEY = 'tma_v2_secret_key_satyam_style'
+    JWT_SECRET_KEY = 'tma_v2_super_secret_jwt_key_placement_satyam_2026_modern_app'
     
     # Caching
     CACHE_TYPE = 'SimpleCache'

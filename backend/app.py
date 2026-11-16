@@ -5,12 +5,18 @@ from config import LocalDevelopmentConfig
 from flask_cors import CORS
 from security import jwt
 
+# Blueprints
+from routes.auth import auth_bp
+
 app = Flask(__name__)
 app.config.from_object(LocalDevelopmentConfig)
 
 jwt.init_app(app)
 db.init_app(app)
 CORS(app)
+
+# Register routes
+app.register_blueprint(auth_bp)
 
 @app.route("/")
 def index():
