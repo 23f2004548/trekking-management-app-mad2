@@ -1,0 +1,280 @@
+<script setup>
+import { ref, onMounted } from "vue"
+import axios from "axios"
+
+const BASE_URL = "http://localhost:5000"
+const token = localStorage.getItem("token")
+
+const treks = ref([])
+const staffList = ref([])
+const loading = ref(true)
+const showModal = ref(false)
+const isEditing = ref(false)
+const editId = ref(null)
+const error = ref("")
+const success = ref("")
+
+const form = ref({
+    name: "",
+    location: "",
+    difficulty: "Moderate",
+    duration: 3,
+    total_slots: 15,
+    available_slots: 15,
+    status: "Open",
+    start_date: "",
+    end_date: "",
+    staff_id: "",
+    description: "",
+    price: 5000
+})
+
+async function fetchTreks() {
+    loading.value = true
+    try {
+        const [trekRes, staffRes] = await Promise.all([
+            axios.get(`${BASE_URL}/admin/treks`, { headers: { Authorization: "Bearer " + token } }),
+            axios.get(`${BASE_URL}/admin/staff`, { headers: { Authorization: "Bearer " + token } })
+        ])
+        treks.value = trekRes.data
+        staffList.value = staffRes.data
+    } catch (err) {
+        error.value = "Failed to load data"
+    } finally {
+        loading.value = false
+    }
+}
+
+function openAddModal() {
+    isEditing.value = false
+    editId.value = null
+    form.value = {
+        name: "",
+        location: "",
+        difficulty: "Moderate",
+        duration: 3,
+        total_slots: 15,
+        available_slots: 15,
+        status: "Open",
+        start_date: "",
+        end_date: "",
+        staff_id: "",
+        description: "",
+        price: 5000
+    }
+    showModal.value = true
+}
+
+function openEditModal(trek) {
+    isEditing.value = true
+    editId.value = trek.id
+    form.value = {
+        name: trek.name,
+        location: trek.location,
+        difficulty: trek.difficulty,
+        duration: trek.duration,
+        total_slots: trek.total_slots,
+        available_slots: trek.available_slots,
+        status: trek.status,
+        start_date: trek.start_date || "",
+        end_date: trek.end_date || "",
+        staff_id: trek.staff_id || "",
+        description: trek.description || "",
+        price: trek.price || 0
+    }
+    showModal.value = true
+}
+
+async function saveTrek() {
+    error.value = ""
+    success.value = ""
+    try {
+        if (isEditing.value) {
+            await axios.put(`${BASE_URL}/admin/treks/${editId.value}`, form.value, {
+                headers: { Authorization: "Bearer " + token }
+            })
+            success.value = "Trek updated successfully"
+        } else {
+            await axios.post(`${BASE_URL}/admin/treks`, form.value, {
+                headers: { Authorization: "Bearer " + token }
+            })
+            success.value = "Trek created successfully"
+        }
+        showModal.value = false
+        fetchTreks()
+    } catch (err) {
+        error.value = err.response?.data?.message || "Operation failed"
+    }
+}
+
+async function deleteTrek(id) {
+    if (!confirm("Are you sure you want to delete this trek route?")) return
+    try {
+        await axios.delete(`${BASE_URL}/admin/treks/${id}`, {
+            headers: { Authorization: "Bearer " + token }
+        })
+        fetchTreks()
+    } catch (err) {
+        alert("Failed to delete trek")
+    }
+}
+
+onMounted(() => {
+    fetchTreks()
+})
+</script>
+
+<template>
+    <div class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+            <div>
+                <h2 class="fw-bold mb-0">Trekking Routes Management</h2>
+                <p class="text-muted small mb-0">Create, edit, remove routes and assign guides</p>
+            </div>
+            <button class="btn btn-primary" @click="openAddModal">+ Add New Trek</button>
+        </div>
+
+        <div v-if="success" class="alert alert-success py-2 small alert-dismissible">
+            {{ success }}
+            <button type="button" class="btn-close btn-sm" @click="success = ''"></button>
+        </div>
+        <div v-if="error" class="alert alert-danger py-2 small alert-dismissible">
+            {{ error }}
+            <button type="button" class="btn-close btn-sm" @click="error = ''"></button>
+        </div>
+
+        <div v-if="loading" class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+        </div>
+
+        <div v-else class="card shadow-sm border-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>Name</th>
+                            <th>Location</th>
+                            <th>Difficulty</th>
+                            <th>Duration</th>
+                            <th>Slots</th>
+                            <th>Price</th>
+                            <th>Assigned Staff</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="t in treks" :key="t.id">
+                            <td>{{ t.id }}</td>
+                            <td class="fw-semibold">{{ t.name }}</td>
+                            <td>{{ t.location }}</td>
+                            <td><span class="badge bg-secondary">{{ t.difficulty }}</span></td>
+                            <td>{{ t.duration }} days</td>
+                            <td>{{ t.available_slots }} / {{ t.total_slots }}</td>
+                            <td>₹{{ t.price }}</td>
+                            <td>{{ t.staff_name }}</td>
+                            <td>
+                                <span class="badge" :class="t.status === 'Open' ? 'bg-success' : 'bg-warning text-dark'">
+                                    {{ t.status }}
+                                </span>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary me-2" @click="openEditModal(t)">Edit</button>
+                                <button class="btn btn-sm btn-outline-danger" @click="deleteTrek(t.id)">Delete</button>
+                            </td>
+                        </tr>
+                        <tr v-if="treks.length === 0">
+                            <td colspan="10" class="text-center text-muted py-3">No treks available</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Add/Edit Trek Modal -->
+        <div v-if="showModal" class="modal d-block" style="background: rgba(0,0,0,0.5);">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold">{{ isEditing ? "Edit Trekking Route" : "Add Trekking Route" }}</h5>
+                        <button type="button" class="btn-close" @click="showModal = false"></button>
+                    </div>
+                    <form @submit.prevent="saveTrek">
+                        <div class="modal-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">Trek Name</label>
+                                    <input v-model="form.name" type="text" class="form-control" required />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">Location</label>
+                                    <input v-model="form.location" type="text" class="form-control" required />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Difficulty</label>
+                                    <select v-model="form.difficulty" class="form-select">
+                                        <option>Easy</option>
+                                        <option>Moderate</option>
+                                        <option>Hard</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Duration (Days)</label>
+                                    <input v-model="form.duration" type="number" min="1" class="form-control" required />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Price (₹)</label>
+                                    <input v-model="form.price" type="number" min="0" class="form-control" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Total Slots</label>
+                                    <input v-model="form.total_slots" type="number" min="1" class="form-control" required />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Available Slots</label>
+                                    <input v-model="form.available_slots" type="number" min="0" class="form-control" required />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Status</label>
+                                    <select v-model="form.status" class="form-select">
+                                        <option>Pending</option>
+                                        <option>Approved</option>
+                                        <option>Open</option>
+                                        <option>Closed</option>
+                                        <option>Completed</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">Start Date</label>
+                                    <input v-model="form.start_date" type="date" class="form-control" required />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">End Date</label>
+                                    <input v-model="form.end_date" type="date" class="form-control" required />
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="form-label fw-semibold">Assign Trek Staff</label>
+                                    <select v-model="form.staff_id" class="form-select">
+                                        <option value="">-- Unassigned --</option>
+                                        <option v-for="s in staffList" :key="s.id" :value="s.id">
+                                            {{ s.name }} ({{ s.specialization || 'General Staff' }})
+                                        </option>
+                                    </select>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="form-label fw-semibold">Description</label>
+                                    <textarea v-model="form.description" class="form-control" rows="3"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" @click="showModal = false">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Save Trek</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>

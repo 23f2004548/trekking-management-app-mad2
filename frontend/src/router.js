@@ -4,8 +4,19 @@ import LoginPage from "./pages/LoginPage.vue"
 import RegisterPage from "./pages/RegisterPage.vue"
 import LandingPage from "./pages/LandingPage.vue"
 
+// Admin Pages
 import AdminDashboard from "./pages/admin/Dashboard.vue"
+import AdminTreks from "./pages/admin/Treks.vue"
+import AdminStaff from "./pages/admin/Staff.vue"
+import AdminUsers from "./pages/admin/Users.vue"
+import AdminBookings from "./pages/admin/Bookings.vue"
+import AdminSearch from "./pages/admin/Search.vue"
+import AdminReports from "./pages/admin/Reports.vue"
+
+// Staff Pages
 import StaffDashboard from "./pages/staff/Dashboard.vue"
+
+// User Pages
 import UserDashboard from "./pages/user/Dashboard.vue"
 
 const routes = [
@@ -13,9 +24,19 @@ const routes = [
     { path: "/login", component: LoginPage },
     { path: "/register", component: RegisterPage },
 
-    // Role-specific protected dashboards
+    // Admin Routes (protected, admin role only)
     { path: "/admin/dashboard", component: AdminDashboard, meta: { requiresAuth: true, role: "admin" } },
+    { path: "/admin/treks", component: AdminTreks, meta: { requiresAuth: true, role: "admin" } },
+    { path: "/admin/staff", component: AdminStaff, meta: { requiresAuth: true, role: "admin" } },
+    { path: "/admin/users", component: AdminUsers, meta: { requiresAuth: true, role: "admin" } },
+    { path: "/admin/bookings", component: AdminBookings, meta: { requiresAuth: true, role: "admin" } },
+    { path: "/admin/search", component: AdminSearch, meta: { requiresAuth: true, role: "admin" } },
+    { path: "/admin/reports", component: AdminReports, meta: { requiresAuth: true, role: "admin" } },
+
+    // Staff Routes
     { path: "/staff/dashboard", component: StaffDashboard, meta: { requiresAuth: true, role: "staff" } },
+
+    // User Routes
     { path: "/user/dashboard", component: UserDashboard, meta: { requiresAuth: true, role: "user" } },
 ]
 
