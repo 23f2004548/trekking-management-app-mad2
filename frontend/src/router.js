@@ -15,6 +15,9 @@ import AdminReports from "./pages/admin/Reports.vue"
 
 // Staff Pages
 import StaffDashboard from "./pages/staff/Dashboard.vue"
+import StaffTreks from "./pages/staff/Treks.vue"
+import StaffParticipants from "./pages/staff/Participants.vue"
+import StaffProfile from "./pages/staff/Profile.vue"
 
 // User Pages
 import UserDashboard from "./pages/user/Dashboard.vue"
@@ -33,8 +36,11 @@ const routes = [
     { path: "/admin/search", component: AdminSearch, meta: { requiresAuth: true, role: "admin" } },
     { path: "/admin/reports", component: AdminReports, meta: { requiresAuth: true, role: "admin" } },
 
-    // Staff Routes
+    // Staff Routes (protected, staff role only)
     { path: "/staff/dashboard", component: StaffDashboard, meta: { requiresAuth: true, role: "staff" } },
+    { path: "/staff/treks", component: StaffTreks, meta: { requiresAuth: true, role: "staff" } },
+    { path: "/staff/participants", component: StaffParticipants, meta: { requiresAuth: true, role: "staff" } },
+    { path: "/staff/profile", component: StaffProfile, meta: { requiresAuth: true, role: "staff" } },
 
     // User Routes
     { path: "/user/dashboard", component: UserDashboard, meta: { requiresAuth: true, role: "user" } },

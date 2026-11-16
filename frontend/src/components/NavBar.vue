@@ -16,6 +16,9 @@ const navlinks = {
     ],
     staff: [
         { label: "Dashboard", path: "/staff/dashboard" },
+        { label: "My Treks", path: "/staff/treks" },
+        { label: "Participants", path: "/staff/participants" },
+        { label: "Profile", path: "/staff/profile" }
     ],
     user: [
         { label: "Dashboard", path: "/user/dashboard" },
