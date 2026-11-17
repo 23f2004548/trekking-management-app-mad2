@@ -1,7 +1,10 @@
 <script setup>
-import { ref, onMounted } from "vue"
+import { ref, onMounted, onBeforeUnmount, nextTick } from "vue"
 import axios from "axios"
 import StatsCard from "../../components/StatsCard.vue"
+import { Chart, registerables } from "chart.js"
+
+Chart.register(...registerables)
 
 const BASE_URL = "http://localhost:5000"
 const token = localStorage.getItem("token")
@@ -12,6 +15,13 @@ const loading = ref(true)
 const jobLoading = ref(false)
 const jobMessage = ref("")
 const jobError = ref("")
+
+const bookingStatusCanvas = ref(null)
+const difficultyCanvas = ref(null)
+const popularBarCanvas = ref(null)
+let bookingStatusChart = null
+let difficultyChart = null
+let popularBarChart = null
 
 async function fetchReports() {
     loading.value = true
@@ -25,10 +35,90 @@ async function fetchReports() {
             headers: { Authorization: "Bearer " + token }
         })
         generatedReports.value = listRes.data.reports || []
+
+        await nextTick()
+        renderCharts()
     } catch (err) {
         console.error("Failed to load reports:", err)
     } finally {
         loading.value = false
+    }
+}
+
+function renderCharts() {
+    if (!report.value) return
+
+    // 1. Booking Status Distribution Doughnut Chart
+    if (bookingStatusCanvas.value) {
+        if (bookingStatusChart) bookingStatusChart.destroy()
+        bookingStatusChart = new Chart(bookingStatusCanvas.value, {
+            type: "doughnut",
+            data: {
+                labels: ["Active Bookings", "Completed Summits", "Cancelled"],
+                datasets: [{
+                    data: [
+                        report.value.booking_stats?.booked || 0,
+                        report.value.booking_stats?.completed || 0,
+                        report.value.booking_stats?.cancelled || 0
+                    ],
+                    backgroundColor: ["#0d6efd", "#198754", "#dc3545"],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: "bottom" } }
+            }
+        })
+    }
+
+    // 2. Trek Difficulty Distribution Pie Chart
+    if (difficultyCanvas.value) {
+        if (difficultyChart) difficultyChart.destroy()
+        difficultyChart = new Chart(difficultyCanvas.value, {
+            type: "pie",
+            data: {
+                labels: ["Easy", "Moderate", "Hard"],
+                datasets: [{
+                    data: [
+                        report.value.difficulty_distribution?.Easy || 0,
+                        report.value.difficulty_distribution?.Moderate || 0,
+                        report.value.difficulty_distribution?.Hard || 0
+                    ],
+                    backgroundColor: ["#198754", "#ffc107", "#dc3545"],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: "bottom" } }
+            }
+        })
+    }
+
+    // 3. Most Popular Treks Participation Bar Chart
+    if (popularBarCanvas.value && report.value.popular_treks?.length > 0) {
+        if (popularBarChart) popularBarChart.destroy()
+        popularBarChart = new Chart(popularBarCanvas.value, {
+            type: "bar",
+            data: {
+                labels: report.value.popular_treks.map(t => t.name),
+                datasets: [{
+                    label: "Confirmed Participants",
+                    data: report.value.popular_treks.map(t => t.booking_count),
+                    backgroundColor: "#0dcaf0",
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+            }
+        })
     }
 }
 
@@ -84,6 +174,12 @@ async function clearCache() {
 
 onMounted(() => {
     fetchReports()
+})
+
+onBeforeUnmount(() => {
+    if (bookingStatusChart) bookingStatusChart.destroy()
+    if (difficultyChart) difficultyChart.destroy()
+    if (popularBarChart) popularBarChart.destroy()
 })
 </script>
 
@@ -151,83 +247,71 @@ onMounted(() => {
                 </div>
             </div>
 
-            <!-- Distribution Breakdown -->
+            <!-- Enhancement 2: Interactive Chart.js Visualizations -->
             <div class="row g-3 mb-4">
                 <div class="col-md-6">
-                    <div class="card p-3 shadow-sm border-0 h-100">
-                        <h5 class="fw-bold mb-3">Booking Status Breakdown</h5>
-                        <ul class="list-group list-group-flush">
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                Active Bookings
-                                <span class="badge bg-primary rounded-pill">{{ report.booking_stats?.booked || 0 }}</span>
-                            </li>
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                Completed Expeditions
-                                <span class="badge bg-success rounded-pill">{{ report.booking_stats?.completed || 0 }}</span>
-                            </li>
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                Cancelled Bookings
-                                <span class="badge bg-danger rounded-pill">{{ report.booking_stats?.cancelled || 0 }}</span>
-                            </li>
-                        </ul>
+                    <div class="card p-4 shadow-sm border-0 h-100 bg-white">
+                        <h5 class="fw-bold mb-3 text-center">
+                            <i class="bi bi-pie-chart-fill text-primary me-2"></i>Participation & Booking Status
+                        </h5>
+                        <div style="height: 250px; position: relative;">
+                            <canvas ref="bookingStatusCanvas"></canvas>
+                        </div>
                     </div>
                 </div>
 
                 <div class="col-md-6">
-                    <div class="card p-3 shadow-sm border-0 h-100">
-                        <h5 class="fw-bold mb-3">Trek Difficulty Distribution</h5>
-                        <ul class="list-group list-group-flush">
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                Easy Routes
-                                <span class="badge bg-success rounded-pill">{{ report.difficulty_distribution?.Easy || 0 }}</span>
-                            </li>
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                Moderate Routes
-                                <span class="badge bg-warning text-dark rounded-pill">{{ report.difficulty_distribution?.Moderate || 0 }}</span>
-                            </li>
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                Hard / High Altitude Routes
-                                <span class="badge bg-danger rounded-pill">{{ report.difficulty_distribution?.Hard || 0 }}</span>
-                            </li>
-                        </ul>
+                    <div class="card p-4 shadow-sm border-0 h-100 bg-white">
+                        <h5 class="fw-bold mb-3 text-center">
+                            <i class="bi bi-compass text-success me-2"></i>Route Difficulty Breakdown
+                        </h5>
+                        <div style="height: 250px; position: relative;">
+                            <canvas ref="difficultyCanvas"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Popular Treks Table -->
-            <div class="card p-3 shadow-sm border-0 mb-4">
-                <h5 class="fw-bold mb-3">Most Popular Treks (Top Booked)</h5>
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>#</th>
-                                <th>Trek Name</th>
-                                <th>Location</th>
-                                <th>Difficulty</th>
-                                <th>Total Bookings</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="t in report.popular_treks" :key="t.id">
-                                <td>{{ t.id }}</td>
-                                <td class="fw-semibold">{{ t.name }}</td>
-                                <td>{{ t.location }}</td>
-                                <td><span class="badge bg-secondary">{{ t.difficulty }}</span></td>
-                                <td><span class="badge bg-info text-dark">{{ t.booking_count }} Bookings</span></td>
-                                <td><span class="badge bg-success">{{ t.status }}</span></td>
-                            </tr>
-                            <tr v-if="!report.popular_treks || report.popular_treks.length === 0">
-                                <td colspan="6" class="text-center text-muted py-3">No bookings data available yet</td>
-                            </tr>
-                        </tbody>
-                    </table>
+            <!-- Popular Treks Chart & Table -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <div class="card p-4 shadow-sm border-0 h-100 bg-white">
+                        <h5 class="fw-bold mb-3 text-center">
+                            <i class="bi bi-bar-chart-fill text-info me-2"></i>Participants per Popular Route
+                        </h5>
+                        <div style="height: 250px; position: relative;">
+                            <canvas ref="popularBarCanvas"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card p-3 shadow-sm border-0 h-100 bg-white">
+                        <h5 class="fw-bold mb-3">Participation Rates & Summary</h5>
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-bookmark-check text-primary me-2"></i>Active Confirmed Bookings</span>
+                                <span class="badge bg-primary rounded-pill">{{ report.booking_stats?.booked || 0 }}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-check2-circle text-success me-2"></i>Completed Expeditions</span>
+                                <span class="badge bg-success rounded-pill">{{ report.booking_stats?.completed || 0 }}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-x-circle text-danger me-2"></i>Cancelled Reservations</span>
+                                <span class="badge bg-danger rounded-pill">{{ report.booking_stats?.cancelled || 0 }}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-people text-secondary me-2"></i>Active Trekker Accounts</span>
+                                <span class="badge bg-secondary rounded-pill">{{ report.active_users || 0 }}</span>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
             </div>
 
             <!-- Milestone 7: Generated Monthly Activity Reports (HTML Archive) -->
-            <div class="card p-3 shadow-sm border-0">
+            <div class="card p-3 shadow-sm border-0 bg-white">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h5 class="fw-bold mb-0">
                         <i class="bi bi-file-earmark-richtext text-primary me-2"></i>Automated Monthly Reports Archive

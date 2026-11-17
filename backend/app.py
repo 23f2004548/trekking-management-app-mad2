@@ -1,6 +1,6 @@
 import os
 from flask import Flask, send_from_directory
-from models.db_models import db, User
+from models.db_models import db, User, Trek, Booking
 from werkzeug.security import generate_password_hash
 from config import LocalDevelopmentConfig
 from flask_cors import CORS
@@ -58,6 +58,49 @@ def download_export(filename):
 def download_report_file(filename):
     reports_dir = os.path.join(app.root_path, "static", "reports")
     return send_from_directory(reports_dir, filename)
+
+@app.route("/public/analytics", methods=["GET"])
+def public_analytics():
+    from flask import jsonify
+    total_open_treks = Trek.query.filter_by(status="Open").count()
+    total_completed_expeditions = Trek.query.filter_by(status="Completed").count()
+    total_trekkers_served = Booking.query.filter(Booking.status.in_(["Booked", "Completed"])).count()
+
+    easy = Trek.query.filter(Trek.status == "Open", Trek.difficulty.ilike("easy")).count()
+    moderate = Trek.query.filter(Trek.status == "Open", Trek.difficulty.ilike("moderate")).count()
+    hard = Trek.query.filter(Trek.status == "Open", Trek.difficulty.ilike("hard")).count()
+
+    featured = Trek.query.filter_by(status="Open").order_by(Trek.start_date.asc()).limit(3).all()
+    featured_data = [{
+        "id": t.id,
+        "name": t.name,
+        "location": t.location,
+        "difficulty": t.difficulty,
+        "duration": t.duration,
+        "price": t.price,
+        "available_slots": t.available_slots
+    } for t in featured]
+
+    all_treks = Trek.query.all()
+    treks_sorted = sorted(all_treks, key=lambda t: len(t.bookings), reverse=True)[:5]
+    popular_data = [{
+        "name": t.name,
+        "bookings": len(t.bookings)
+    } for t in treks_sorted]
+
+    return jsonify({
+        "metrics": {
+            "open_treks": total_open_treks,
+            "completed_expeditions": total_completed_expeditions,
+            "trekkers_served": total_trekkers_served
+        },
+        "difficulty_breakdown": {
+            "labels": ["Easy", "Moderate", "Hard"],
+            "counts": [easy, moderate, hard]
+        },
+        "featured_treks": featured_data,
+        "popular_treks": popular_data
+    }), 200
 
 @app.route("/")
 def index():

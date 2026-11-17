@@ -211,6 +211,36 @@ def cancel_booking(booking_id):
     }), 200
 
 
+@user_bp.route("/bookings/<int:booking_id>/pay", methods=["POST"])
+@jwt_required()
+@role_required("user")
+def simulate_payment(booking_id):
+    booking = Booking.query.get(booking_id)
+    if not booking:
+        return jsonify({"message": "Booking not found"}), 404
+
+    if booking.user_id != current_user.id:
+        return jsonify({"message": "Forbidden"}), 403
+
+    if booking.status == "Cancelled":
+        return jsonify({"message": "Cannot pay for a cancelled booking"}), 400
+
+    if booking.payment_status == "Paid":
+        return jsonify({"message": "Booking is already paid"}), 400
+
+    data = request.get_json() or {}
+    payment_method = data.get("method", "UPI")
+
+    booking.payment_status = "Paid"
+    db.session.commit()
+    cache.clear()
+
+    return jsonify({
+        "message": f"Payment simulated successfully via {payment_method}! Booking confirmed.",
+        "booking": serialize_booking_with_tracking(booking)
+    }), 200
+
+
 # ── 6. Trekking History ───────────────────────────────────────────────────────
 @user_bp.route("/history", methods=["GET"])
 @jwt_required()

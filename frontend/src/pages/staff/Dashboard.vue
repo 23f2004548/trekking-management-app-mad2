@@ -1,8 +1,11 @@
 <script setup>
-import { ref, onMounted } from "vue"
+import { ref, onMounted, onBeforeUnmount, nextTick } from "vue"
 import { useRouter } from "vue-router"
 import axios from "axios"
 import StatsCard from "../../components/StatsCard.vue"
+import { Chart, registerables } from "chart.js"
+
+Chart.register(...registerables)
 
 const router = useRouter()
 const BASE_URL = "http://localhost:5000"
@@ -17,6 +20,9 @@ const newSlots = ref(0)
 const error = ref("")
 const success = ref("")
 
+const chartCanvas = ref(null)
+let chartInstance = null
+
 async function fetchDashboard() {
     loading.value = true
     try {
@@ -25,11 +31,39 @@ async function fetchDashboard() {
         })
         stats.value = res.data
         assignedTreks.value = res.data.treks || []
+
+        await nextTick()
+        renderBarChart()
     } catch (err) {
         error.value = "Failed to load staff dashboard"
     } finally {
         loading.value = false
     }
+}
+
+function renderBarChart() {
+    if (!chartCanvas.value || !assignedTreks.value.length) return
+    if (chartInstance) chartInstance.destroy()
+
+    chartInstance = new Chart(chartCanvas.value, {
+        type: "bar",
+        data: {
+            labels: assignedTreks.value.map(t => t.name),
+            datasets: [{
+                label: "Confirmed Participants",
+                data: assignedTreks.value.map(t => t.registered_trekkers || 0),
+                backgroundColor: "#198754",
+                borderWidth: 0,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
+    })
 }
 
 async function updateTrekStatus(trekId, status) {
@@ -78,6 +112,10 @@ function getBadge(status) {
 onMounted(() => {
     fetchDashboard()
 })
+
+onBeforeUnmount(() => {
+    if (chartInstance) chartInstance.destroy()
+})
 </script>
 
 <template>
@@ -108,6 +146,22 @@ onMounted(() => {
                 </div>
                 <div class="col-4">
                     <StatsCard card_title="Open Treks" :card_value="stats.open_treks || 0" icon="bi-map" />
+                </div>
+            </div>
+
+            <!-- Enhancement 2: Participants per Assigned Trek Bar Chart (MAD 1 style) -->
+            <div class="row mb-4" v-if="assignedTreks.length > 0">
+                <div class="col-12">
+                    <div class="card shadow-sm border-0 bg-white">
+                        <div class="card-body p-4">
+                            <h5 class="fw-bold mb-3 text-center">
+                                <i class="bi bi-bar-chart-fill text-success me-2"></i>Participants per Assigned Trek
+                            </h5>
+                            <div style="height: 250px; position: relative;">
+                                <canvas ref="chartCanvas"></canvas>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 

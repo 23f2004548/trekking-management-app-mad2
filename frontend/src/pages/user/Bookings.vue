@@ -19,6 +19,39 @@ const cancelingBooking = ref(null)
 const showTrackModal = ref(false)
 const trackingBooking = ref(null)
 
+const showPayModal = ref(false)
+const payingBooking = ref(null)
+const selectedPayMethod = ref("UPI")
+const paymentProcessing = ref(false)
+
+function openPaymentModal(booking) {
+    payingBooking.value = booking
+    selectedPayMethod.value = "UPI"
+    showPayModal.value = true
+}
+
+async function processPaymentSimulation() {
+    if (!payingBooking.value) return
+    paymentProcessing.value = true
+    error.value = ""
+    success.value = ""
+    try {
+        const res = await axios.post(`${BASE_URL}/user/bookings/${payingBooking.value.id}/pay`, {
+            method: selectedPayMethod.value
+        }, {
+            headers: { Authorization: "Bearer " + token }
+        })
+        success.value = res.data.message || "Payment processed successfully!"
+        showPayModal.value = false
+        payingBooking.value = null
+        fetchBookings()
+    } catch (err) {
+        error.value = err.response?.data?.message || "Failed to process payment"
+    } finally {
+        paymentProcessing.value = false
+    }
+}
+
 async function fetchBookings() {
     loading.value = true
     error.value = ""
@@ -143,6 +176,7 @@ onMounted(() => {
                                 <th>Start Date</th>
                                 <th>End Date</th>
                                 <th>Status</th>
+                                <th>Payment</th>
                                 <th>Trek Progress</th>
                                 <th>Action</th>
                                 <th>Staff</th>
@@ -163,6 +197,20 @@ onMounted(() => {
                                     <span v-else-if="b.status === 'Cancelled'" class="badge bg-danger">Cancelled</span>
                                     <span v-else-if="b.status === 'Completed'" class="badge bg-primary">Completed</span>
                                     <span v-else class="badge bg-warning text-dark">Pending</span>
+                                </td>
+                                <td>
+                                    <!-- Enhancement 2: Payment Simulation -->
+                                    <span v-if="b.payment_status === 'Paid'" class="badge bg-success">
+                                        <i class="bi bi-check2-circle me-1"></i>Paid
+                                    </span>
+                                    <button
+                                        v-else-if="b.status !== 'Cancelled'"
+                                        class="btn btn-warning btn-sm fw-semibold text-dark py-0 px-2"
+                                        @click="openPaymentModal(b)"
+                                    >
+                                        <i class="bi bi-credit-card me-1"></i>Pay ₹{{ b.trek_price }}
+                                    </button>
+                                    <span v-else class="text-muted small">N/A</span>
                                 </td>
                                 <td>
                                     <!-- Milestone 6: Live Trek Tracking Badge & Trigger -->
@@ -191,7 +239,7 @@ onMounted(() => {
                                 </td>
                             </tr>
                             <tr v-if="bookings.length === 0">
-                                <td colspan="9" class="text-center text-muted py-4">
+                                <td colspan="10" class="text-center text-muted py-4">
                                     <i class="bi bi-journal-x fs-3 d-block mb-2"></i>
                                     No bookings found in this category. Explore our open treks in <router-link to="/user/browse">Browse Treks</router-link>!
                                 </td>
@@ -324,6 +372,66 @@ onMounted(() => {
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" @click="showTrackModal = false">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Enhancement 2: Mock Payment Simulation Modal -->
+        <div v-if="showPayModal" class="modal fade show d-block" style="background: rgba(0,0,0,0.5)">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header bg-success text-white">
+                        <h5 class="modal-title fw-bold">
+                            <i class="bi bi-shield-lock-fill me-2"></i>Secure Payment Gateway (Mock)
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" @click="showPayModal = false"></button>
+                    </div>
+                    <div class="modal-body" v-if="payingBooking">
+                        <div class="p-3 bg-light rounded mb-3 text-center">
+                            <span class="text-muted small d-block">Amount Due</span>
+                            <h2 class="fw-bold text-success mb-1">₹{{ payingBooking.trek_price }}</h2>
+                            <span class="fw-semibold">{{ payingBooking.trek_name }}</span>
+                        </div>
+
+                        <label class="form-label fw-bold">Select Payment Method</label>
+                        <div class="d-flex flex-column gap-2 mb-3">
+                            <label class="form-check border p-2 rounded d-flex align-items-center cursor-pointer" :class="{ 'border-success bg-light': selectedPayMethod === 'UPI' }">
+                                <input class="form-check-input me-2" type="radio" value="UPI" v-model="selectedPayMethod">
+                                <i class="bi bi-phone me-2 text-primary"></i>
+                                <div>
+                                    <div class="fw-semibold">UPI / QR Code</div>
+                                    <small class="text-muted">GPay, PhonePe, Paytm</small>
+                                </div>
+                            </label>
+                            <label class="form-check border p-2 rounded d-flex align-items-center cursor-pointer" :class="{ 'border-success bg-light': selectedPayMethod === 'Card' }">
+                                <input class="form-check-input me-2" type="radio" value="Card" v-model="selectedPayMethod">
+                                <i class="bi bi-credit-card me-2 text-danger"></i>
+                                <div>
+                                    <div class="fw-semibold">Credit / Debit Card</div>
+                                    <small class="text-muted">Visa, MasterCard, RuPay</small>
+                                </div>
+                            </label>
+                            <label class="form-check border p-2 rounded d-flex align-items-center cursor-pointer" :class="{ 'border-success bg-light': selectedPayMethod === 'NetBanking' }">
+                                <input class="form-check-input me-2" type="radio" value="NetBanking" v-model="selectedPayMethod">
+                                <i class="bi bi-bank me-2 text-success"></i>
+                                <div>
+                                    <div class="fw-semibold">Net Banking</div>
+                                    <small class="text-muted">All major Indian banks</small>
+                                </div>
+                            </label>
+                        </div>
+                        <div class="alert alert-info py-2 px-3 small mb-0">
+                            <i class="bi bi-info-circle me-1"></i>This is a simulated sandbox payment flow for academic evaluation (Enhancement 2). No actual charges will occur.
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" @click="showPayModal = false" :disabled="paymentProcessing">Cancel</button>
+                        <button type="button" class="btn btn-success fw-semibold" @click="processPaymentSimulation" :disabled="paymentProcessing">
+                            <span v-if="paymentProcessing" class="spinner-border spinner-border-sm me-1"></span>
+                            <span v-else><i class="bi bi-lock-fill me-1"></i></span>
+                            Pay ₹{{ payingBooking ? payingBooking.trek_price : 0 }} Now
+                        </button>
                     </div>
                 </div>
             </div>
