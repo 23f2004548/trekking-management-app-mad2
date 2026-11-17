@@ -3,3 +3,10 @@ Flask
 Vue
 SQLite
 Redis
+node_modules/
+dist/
+__pycache__/
+*.pyc
+instance/
+*.sqlite3
+*.db

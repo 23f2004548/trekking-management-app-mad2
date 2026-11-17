@@ -21,6 +21,10 @@ import StaffProfile from "./pages/staff/Profile.vue"
 
 // User Pages
 import UserDashboard from "./pages/user/Dashboard.vue"
+import UserBrowse from "./pages/user/Browse.vue"
+import UserBookings from "./pages/user/Bookings.vue"
+import UserHistory from "./pages/user/History.vue"
+import UserProfile from "./pages/user/Profile.vue"
 
 const routes = [
     { path: "/", component: LandingPage },
@@ -42,8 +46,12 @@ const routes = [
     { path: "/staff/participants", component: StaffParticipants, meta: { requiresAuth: true, role: "staff" } },
     { path: "/staff/profile", component: StaffProfile, meta: { requiresAuth: true, role: "staff" } },
 
-    // User Routes
+    // User Routes (protected, user role only)
     { path: "/user/dashboard", component: UserDashboard, meta: { requiresAuth: true, role: "user" } },
+    { path: "/user/browse", component: UserBrowse, meta: { requiresAuth: true, role: "user" } },
+    { path: "/user/bookings", component: UserBookings, meta: { requiresAuth: true, role: "user" } },
+    { path: "/user/history", component: UserHistory, meta: { requiresAuth: true, role: "user" } },
+    { path: "/user/profile", component: UserProfile, meta: { requiresAuth: true, role: "user" } },
 ]
 
 const router = createRouter({

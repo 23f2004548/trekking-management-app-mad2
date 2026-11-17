@@ -132,6 +132,8 @@ class Booking(BaseModel):
             "trek_status": self.trek.status if self.trek else None,
             "trek_start_date": self.trek.start_date.strftime("%Y-%m-%d") if self.trek and self.trek.start_date else None,
             "trek_end_date": self.trek.end_date.strftime("%Y-%m-%d") if self.trek and self.trek.end_date else None,
+            "trek_price": self.trek.price if self.trek else 0.0,
+            "staff_name": self.trek.assigned_staff.name if self.trek and self.trek.assigned_staff else "Unassigned",
             "booking_date": self.booking_date.strftime("%Y-%m-%d %H:%M") if self.booking_date else None,
             "status": self.status,
             "payment_status": self.payment_status,

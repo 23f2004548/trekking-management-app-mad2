@@ -9,6 +9,7 @@ from security import jwt
 from routes.auth import auth_bp
 from routes.admin import admin_bp
 from routes.staff import staff_bp
+from routes.user import user_bp
 
 app = Flask(__name__)
 app.config.from_object(LocalDevelopmentConfig)
@@ -21,6 +22,7 @@ CORS(app)
 app.register_blueprint(auth_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(staff_bp)
+app.register_blueprint(user_bp)
 
 @app.route("/")
 def index():
