@@ -65,6 +65,23 @@ async function triggerDailyRemindersJob() {
     }
 }
 
+async function clearCache() {
+    jobLoading.value = true
+    jobMessage.value = ""
+    jobError.value = ""
+    try {
+        const res = await axios.post(`${BASE_URL}/admin/cache/clear`, {}, {
+            headers: { Authorization: "Bearer " + token }
+        })
+        jobMessage.value = res.data.message || "API cache cleared successfully"
+        fetchReports()
+    } catch (err) {
+        jobError.value = err.response?.data?.message || "Failed to clear cache"
+    } finally {
+        jobLoading.value = false
+    }
+}
+
 onMounted(() => {
     fetchReports()
 })
@@ -78,6 +95,14 @@ onMounted(() => {
                 <p class="text-muted small mb-0">Comprehensive metrics on treks, bookings, and route popularity</p>
             </div>
             <div class="d-flex gap-2">
+                <button
+                    class="btn btn-outline-danger btn-sm"
+                    @click="clearCache"
+                    :disabled="jobLoading"
+                    title="Flush Redis and in-memory API response cache"
+                >
+                    <i class="bi bi-arrow-clockwise me-1"></i>Purge Cache
+                </button>
                 <button
                     class="btn btn-outline-primary btn-sm"
                     @click="triggerDailyRemindersJob"

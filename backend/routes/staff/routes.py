@@ -2,6 +2,7 @@ from flask import request, jsonify
 from flask_jwt_extended import jwt_required, current_user
 from role_required import role_required
 from models.db_models import db, User, StaffProfile, Trek, Booking
+from cache import cache
 from . import staff_bp
 
 
@@ -16,6 +17,7 @@ def get_current_staff():
 @staff_bp.route("/dashboard", methods=["GET"])
 @jwt_required()
 @role_required("staff")
+@cache.cached(timeout=60)
 def dashboard():
     staff = get_current_staff()
     if not staff:
@@ -115,6 +117,7 @@ def update_my_trek(trek_id):
                 b.status = "Completed"
 
     db.session.commit()
+    cache.clear()
     return jsonify({
         "message": "Trek updated successfully",
         "trek": trek.to_dict()
@@ -187,6 +190,7 @@ def update_participant_status(trek_id, booking_id):
 
     booking.status = new_status
     db.session.commit()
+    cache.clear()
     return jsonify({
         "message": f"Participant status updated to {new_status}",
         "booking": booking.to_dict()

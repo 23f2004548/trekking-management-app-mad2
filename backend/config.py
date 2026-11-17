@@ -1,3 +1,5 @@
+import os
+
 class Config():
     DEBUG = False
     SQLALCHEMY_TRACK_MODIFICATIONS = False
@@ -7,9 +9,12 @@ class LocalDevelopmentConfig(Config):
     SQLALCHEMY_DATABASE_URI = 'sqlite:///trekking.db'
     JWT_SECRET_KEY = 'tma_v2_super_secret_jwt_key_placement_satyam_2026_modern_app'
     
-    # Caching
-    CACHE_TYPE = 'SimpleCache'
-    CACHE_DEFAULT_TIMEOUT = 300
+    # Milestone 8: API Performance Optimization & Redis Caching
+    CACHE_TYPE = os.getenv("CACHE_TYPE", "RedisCache")
+    CACHE_REDIS_URL = os.getenv("CACHE_REDIS_URL", "redis://localhost:6379/2")
+    CACHE_DEFAULT_TIMEOUT = int(os.getenv("CACHE_DEFAULT_TIMEOUT", 300))
+    CACHE_KEY_PREFIX = "trekflow_"
+    CACHE_IGNORE_ERRORS = True
     
     # Celery & Redis
     CELERY_BROKER_URL = 'redis://localhost:6379/0'

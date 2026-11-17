@@ -5,6 +5,7 @@ from werkzeug.security import generate_password_hash
 from config import LocalDevelopmentConfig
 from flask_cors import CORS
 from security import jwt
+from cache import cache, init_cache
 from celery_init_app import celery_init_app
 from celery.schedules import crontab
 from task import monthly_report, daily_reminders
@@ -20,6 +21,7 @@ app.config.from_object(LocalDevelopmentConfig)
 
 jwt.init_app(app)
 db.init_app(app)
+init_cache(app)
 CORS(app)
 
 # Celery Initialization

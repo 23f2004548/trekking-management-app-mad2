@@ -3,6 +3,7 @@ from flask_jwt_extended import jwt_required, current_user
 from werkzeug.security import generate_password_hash
 from role_required import role_required
 from models.db_models import db, User, Trek, Booking
+from cache import cache
 from . import user_bp
 
 
@@ -112,6 +113,7 @@ def book_trek(trek_id):
             existing_booking.status = "Booked"
             trek.available_slots -= 1
             db.session.commit()
+            cache.clear()
             return jsonify({
                 "message": "Booking re-submitted successfully!",
                 "booking": existing_booking.to_dict()
@@ -122,6 +124,7 @@ def book_trek(trek_id):
     trek.available_slots -= 1
     db.session.add(booking)
     db.session.commit()
+    cache.clear()
 
     return jsonify({
         "message": "Trek booked successfully!",
@@ -201,6 +204,7 @@ def cancel_booking(booking_id):
         booking.trek.available_slots += 1
 
     db.session.commit()
+    cache.clear()
     return jsonify({
         "message": "Booking cancelled successfully",
         "booking": serialize_booking_with_tracking(booking)

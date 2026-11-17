@@ -3,12 +3,14 @@ from flask_jwt_extended import jwt_required, current_user
 from role_required import role_required
 from models.db_models import db, User, StaffProfile, Trek, Booking
 from datetime import datetime
+from cache import cache
 from . import admin_bp
 
 # ── 1. Dashboard Stats ────────────────────────────────────────────────────────
 @admin_bp.route("/dashboard", methods=["GET"])
 @jwt_required()
 @role_required("admin")
+@cache.cached(timeout=60)
 def dashboard():
     total_treks = Trek.query.count()
     total_users = User.query.filter_by(role="user").count()
@@ -35,6 +37,7 @@ def dashboard():
 @admin_bp.route("/treks", methods=["GET"])
 @jwt_required()
 @role_required("admin")
+@cache.cached(timeout=60)
 def get_all_treks():
     treks = Trek.query.order_by(Trek.created_at.desc()).all()
     return jsonify([t.to_dict() for t in treks]), 200
@@ -62,6 +65,7 @@ def add_trek():
         )
         db.session.add(trek)
         db.session.commit()
+        cache.clear()
         return jsonify({"message": "Trek created successfully", "trek": trek.to_dict()}), 201
     except Exception as e:
         db.session.rollback()
@@ -97,6 +101,7 @@ def update_trek(trek_id):
             trek.end_date = datetime.strptime(data["end_date"], "%Y-%m-%d").date()
 
         db.session.commit()
+        cache.clear()
         return jsonify({"message": "Trek updated successfully", "trek": trek.to_dict()}), 200
     except Exception as e:
         db.session.rollback()
@@ -110,6 +115,7 @@ def delete_trek(trek_id):
     trek = Trek.query.get_or_404(trek_id)
     db.session.delete(trek)
     db.session.commit()
+    cache.clear()
     return jsonify({"message": "Trek deleted successfully"}), 200
 
 
@@ -117,6 +123,7 @@ def delete_trek(trek_id):
 @admin_bp.route("/staff", methods=["GET"])
 @jwt_required()
 @role_required("admin")
+@cache.cached(timeout=60)
 def get_all_staff():
     staff_list = StaffProfile.query.order_by(StaffProfile.created_at.desc()).all()
     return jsonify([s.to_dict() for s in staff_list]), 200
@@ -166,6 +173,7 @@ def add_staff():
     )
     db.session.add(profile)
     db.session.commit()
+    cache.clear()
 
     return jsonify({"message": "Staff member created successfully", "staff": profile.to_dict()}), 201
 
@@ -185,6 +193,7 @@ def toggle_staff_status(staff_id):
             staff.user.is_active = True
 
     db.session.commit()
+    cache.clear()
     return jsonify({
         "message": f"Staff status updated to {staff.status}",
         "staff": staff.to_dict()
@@ -201,6 +210,7 @@ def delete_staff(staff_id):
     if user:
         db.session.delete(user)
     db.session.commit()
+    cache.clear()
     return jsonify({"message": "Staff member deleted successfully"}), 200
 
 
@@ -208,6 +218,7 @@ def delete_staff(staff_id):
 @admin_bp.route("/users", methods=["GET"])
 @jwt_required()
 @role_required("admin")
+@cache.cached(timeout=60)
 def get_all_users():
     users = User.query.filter_by(role="user").order_by(User.created_at.desc()).all()
     return jsonify([u.to_dict() for u in users]), 200
@@ -223,6 +234,7 @@ def toggle_user_active(user_id):
 
     user.is_active = not user.is_active
     db.session.commit()
+    cache.clear()
     return jsonify({
         "message": f"User {'activated' if user.is_active else 'deactivated'} successfully",
         "user": user.to_dict()
@@ -238,6 +250,7 @@ def delete_user(user_id):
         return jsonify({"message": "Cannot delete an administrator"}), 403
     db.session.delete(user)
     db.session.commit()
+    cache.clear()
     return jsonify({"message": "User deleted successfully"}), 200
 
 
@@ -292,6 +305,7 @@ def update_booking_status(booking_id):
 
     booking.status = new_status
     db.session.commit()
+    cache.clear()
     return jsonify({"message": "Booking status updated successfully", "booking": booking.to_dict()}), 200
 
 
@@ -341,6 +355,7 @@ def search():
 @admin_bp.route("/reports", methods=["GET"])
 @jwt_required()
 @role_required("admin")
+@cache.cached(timeout=60)
 def reports():
     total_treks = Trek.query.count()
     total_bookings = Booking.query.count()
@@ -449,4 +464,13 @@ def list_generated_reports():
                     "url": f"/reports/file/{f}"
                 })
     return jsonify({"reports": files}), 200
+
+
+# ── 9. Redis Cache Control (Milestone 8) ───────────────────────────────────────
+@admin_bp.route("/cache/clear", methods=["POST"])
+@jwt_required()
+@role_required("admin")
+def clear_api_cache():
+    cache.clear()
+    return jsonify({"message": "API cache cleared successfully"}), 200
 
