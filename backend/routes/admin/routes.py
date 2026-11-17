@@ -81,7 +81,12 @@ def update_trek(trek_id):
         if "duration" in data: trek.duration = int(data["duration"])
         if "total_slots" in data: trek.total_slots = int(data["total_slots"])
         if "available_slots" in data: trek.available_slots = int(data["available_slots"])
-        if "status" in data: trek.status = data["status"]
+        if "status" in data:
+            trek.status = data["status"]
+            if trek.status == "Completed":
+                active_bookings = Booking.query.filter_by(trek_id=trek.id).filter(Booking.status.in_(["Booked", "Confirmed"])).all()
+                for b in active_bookings:
+                    b.status = "Completed"
         if "description" in data: trek.description = data["description"]
         if "price" in data: trek.price = float(data["price"])
         if "staff_id" in data:
@@ -241,7 +246,27 @@ def delete_user(user_id):
 @jwt_required()
 @role_required("admin")
 def get_all_bookings():
-    bookings = Booking.query.order_by(Booking.booking_date.desc()).all()
+    status = request.args.get("status", "all").strip()
+    trek_id = request.args.get("trek_id")
+    user_id = request.args.get("user_id")
+    search = request.args.get("search", "").strip()
+
+    query = Booking.query.join(Trek).join(User)
+
+    if status and status.lower() != "all":
+        query = query.filter(Booking.status.ilike(status))
+    if trek_id:
+        query = query.filter(Booking.trek_id == int(trek_id))
+    if user_id:
+        query = query.filter(Booking.user_id == int(user_id))
+    if search:
+        query = query.filter(
+            (Trek.name.ilike(f"%{search}%")) |
+            (User.name.ilike(f"%{search}%")) |
+            (User.email.ilike(f"%{search}%"))
+        )
+
+    bookings = query.order_by(Booking.booking_date.desc()).all()
     return jsonify([b.to_dict() for b in bookings]), 200
 
 

@@ -9,11 +9,17 @@ const bookings = ref([])
 const loading = ref(true)
 const error = ref("")
 const success = ref("")
+const statusFilter = ref("all")
+const searchTerm = ref("")
 
 async function fetchBookings() {
     loading.value = true
     try {
-        const res = await axios.get(`${BASE_URL}/admin/bookings`, {
+        const params = new URLSearchParams()
+        if (statusFilter.value !== "all") params.append("status", statusFilter.value)
+        if (searchTerm.value.trim()) params.append("search", searchTerm.value.trim())
+
+        const res = await axios.get(`${BASE_URL}/admin/bookings?${params.toString()}`, {
             headers: { Authorization: "Bearer " + token }
         })
         bookings.value = res.data
@@ -38,6 +44,11 @@ async function updateStatus(id, newStatus) {
     }
 }
 
+function filterBy(status) {
+    statusFilter.value = status
+    fetchBookings()
+}
+
 function getBadge(status) {
     if (status === "Booked") return "bg-primary"
     if (status === "Completed") return "bg-success"
@@ -55,7 +66,58 @@ onMounted(() => {
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h2 class="fw-bold mb-0">Booking Records & History</h2>
-                <p class="text-muted small mb-0">View all user bookings and manage expedition participation</p>
+                <p class="text-muted small mb-0">View all user bookings, track status progression, and manage expedition records</p>
+            </div>
+        </div>
+
+        <!-- Filter bar -->
+        <div class="card shadow-sm border-0 mb-4 bg-white">
+            <div class="card-body p-3">
+                <div class="row g-2 align-items-center">
+                    <div class="col-md-6 d-flex gap-2">
+                        <button
+                            class="btn btn-sm"
+                            :class="statusFilter === 'all' ? 'btn-dark' : 'btn-outline-secondary'"
+                            @click="filterBy('all')"
+                        >
+                            All ({{ bookings.length }})
+                        </button>
+                        <button
+                            class="btn btn-sm"
+                            :class="statusFilter === 'Booked' ? 'btn-primary' : 'btn-outline-secondary'"
+                            @click="filterBy('Booked')"
+                        >
+                            Booked
+                        </button>
+                        <button
+                            class="btn btn-sm"
+                            :class="statusFilter === 'Completed' ? 'btn-success' : 'btn-outline-secondary'"
+                            @click="filterBy('Completed')"
+                        >
+                            Completed
+                        </button>
+                        <button
+                            class="btn btn-sm"
+                            :class="statusFilter === 'Cancelled' ? 'btn-danger' : 'btn-outline-secondary'"
+                            @click="filterBy('Cancelled')"
+                        >
+                            Cancelled
+                        </button>
+                    </div>
+                    <div class="col-md-6">
+                        <form @submit.prevent="fetchBookings" class="d-flex gap-2">
+                            <input
+                                type="text"
+                                v-model="searchTerm"
+                                class="form-control form-control-sm"
+                                placeholder="Search by trekker name, email, or trek route..."
+                            />
+                            <button type="submit" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
 

@@ -108,6 +108,11 @@ def update_my_trek(trek_id):
         if new_status not in valid_statuses:
             return jsonify({"message": f"Invalid status. Allowed: {valid_statuses}"}), 400
         trek.status = new_status
+        if new_status == "Completed":
+            # Auto-complete active participants on trek completion
+            active_bookings = Booking.query.filter_by(trek_id=trek.id).filter(Booking.status.in_(["Booked", "Confirmed"])).all()
+            for b in active_bookings:
+                b.status = "Completed"
 
     db.session.commit()
     return jsonify({

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from "vue"
+import { ref, computed, onMounted } from "vue"
 import { useRouter } from "vue-router"
 import axios from "axios"
 
@@ -11,15 +11,22 @@ const bookings = ref([])
 const loading = ref(true)
 const error = ref("")
 const success = ref("")
+const statusFilter = ref("all")
 
 const showCancelModal = ref(false)
 const cancelingBooking = ref(null)
+
+const showTrackModal = ref(false)
+const trackingBooking = ref(null)
 
 async function fetchBookings() {
     loading.value = true
     error.value = ""
     try {
-        const res = await axios.get(`${BASE_URL}/user/bookings`, {
+        const url = statusFilter.value === "all"
+            ? `${BASE_URL}/user/bookings`
+            : `${BASE_URL}/user/bookings?status=${statusFilter.value}`
+        const res = await axios.get(url, {
             headers: { Authorization: "Bearer " + token }
         })
         bookings.value = res.data.bookings || []
@@ -33,6 +40,11 @@ async function fetchBookings() {
 function promptCancel(booking) {
     cancelingBooking.value = booking
     showCancelModal.value = true
+}
+
+function openTracker(booking) {
+    trackingBooking.value = booking
+    showTrackModal.value = true
 }
 
 async function confirmCancel() {
@@ -53,6 +65,11 @@ async function confirmCancel() {
     }
 }
 
+function filterBy(status) {
+    statusFilter.value = status
+    fetchBookings()
+}
+
 onMounted(() => {
     fetchBookings()
 })
@@ -64,6 +81,38 @@ onMounted(() => {
             <h4 class="fw-bold mb-0">My Bookings</h4>
             <button class="btn btn-primary btn-sm" @click="router.push('/user/browse')">
                 <i class="bi bi-compass me-1"></i>Book New Trek
+            </button>
+        </div>
+
+        <!-- Filter tabs matching TrekFlow design -->
+        <div class="d-flex gap-2 mb-3">
+            <button
+                class="btn btn-sm"
+                :class="statusFilter === 'all' ? 'btn-dark' : 'btn-outline-secondary'"
+                @click="filterBy('all')"
+            >
+                All Bookings
+            </button>
+            <button
+                class="btn btn-sm"
+                :class="statusFilter === 'Booked' ? 'btn-success' : 'btn-outline-secondary'"
+                @click="filterBy('Booked')"
+            >
+                Active / Confirmed
+            </button>
+            <button
+                class="btn btn-sm"
+                :class="statusFilter === 'Completed' ? 'btn-primary' : 'btn-outline-secondary'"
+                @click="filterBy('Completed')"
+            >
+                Completed
+            </button>
+            <button
+                class="btn btn-sm"
+                :class="statusFilter === 'Cancelled' ? 'btn-danger' : 'btn-outline-secondary'"
+                @click="filterBy('Cancelled')"
+            >
+                Cancelled
             </button>
         </div>
 
@@ -81,7 +130,7 @@ onMounted(() => {
             <div class="spinner-border text-primary" role="status"></div>
         </div>
 
-        <!-- Bookings Card & Table matching MAD 1 user_bookings.html -->
+        <!-- Bookings Card & Table matching MAD 1 user_bookings.html with Milestone 6 enhancements -->
         <div v-else class="card shadow-sm border-0 bg-white">
             <div class="card-body">
                 <div class="table-responsive">
@@ -94,13 +143,17 @@ onMounted(() => {
                                 <th>Start Date</th>
                                 <th>End Date</th>
                                 <th>Status</th>
+                                <th>Trek Progress</th>
                                 <th>Action</th>
                                 <th>Staff</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr v-for="b in bookings" :key="b.id">
-                                <td class="fw-semibold">{{ b.trek_name }}</td>
+                                <td class="fw-semibold">
+                                    <span class="text-dark">{{ b.trek_name }}</span>
+                                    <span class="d-block small text-muted">₹{{ b.trek_price }} · {{ b.trek_difficulty }}</span>
+                                </td>
                                 <td><i class="bi bi-geo-alt text-danger me-1"></i>{{ b.trek_location }}</td>
                                 <td>{{ b.booking_date }}</td>
                                 <td>{{ b.trek_start_date }}</td>
@@ -112,6 +165,15 @@ onMounted(() => {
                                     <span v-else class="badge bg-warning text-dark">Pending</span>
                                 </td>
                                 <td>
+                                    <!-- Milestone 6: Live Trek Tracking Badge & Trigger -->
+                                    <button
+                                        class="btn btn-outline-primary btn-sm py-0 px-2 small"
+                                        @click="openTracker(b)"
+                                    >
+                                        <i class="bi bi-broadcast me-1"></i>{{ b.tracking_label || b.trek_status }}
+                                    </button>
+                                </td>
+                                <td>
                                     <button
                                         v-if="b.status !== 'Cancelled' && b.status !== 'Completed'"
                                         class="btn btn-danger btn-sm"
@@ -121,15 +183,17 @@ onMounted(() => {
                                     </button>
                                     <span v-else-if="b.status === 'Cancelled'" class="text-muted">Cancelled</span>
                                     <span v-else class="text-success small fw-semibold">
-                                        <i class="bi bi-check2-all me-1"></i>Completed
+                                        <i class="bi bi-trophy-fill text-warning me-1"></i>Finished
                                     </span>
                                 </td>
-                                <td>{{ b.staff_name || 'Unassigned' }}</td>
+                                <td>
+                                    <span class="fw-semibold">{{ b.staff_name || 'Unassigned' }}</span>
+                                </td>
                             </tr>
                             <tr v-if="bookings.length === 0">
-                                <td colspan="8" class="text-center text-muted py-4">
+                                <td colspan="9" class="text-center text-muted py-4">
                                     <i class="bi bi-journal-x fs-3 d-block mb-2"></i>
-                                    You have no bookings yet. Explore our open treks in <router-link to="/user/browse">Browse Treks</router-link>!
+                                    No bookings found in this category. Explore our open treks in <router-link to="/user/browse">Browse Treks</router-link>!
                                 </td>
                             </tr>
                         </tbody>
@@ -153,6 +217,113 @@ onMounted(() => {
                     <div class="modal-footer">
                         <button type="button" class="btn btn-outline-secondary" @click="showCancelModal = false">Keep Booking</button>
                         <button type="button" class="btn btn-danger" @click="confirmCancel">Confirm Cancellation</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Milestone 6: Live Trek Status Tracking Modal -->
+        <div v-if="showTrackModal" class="modal fade show d-block" style="background: rgba(0,0,0,0.5)">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold">
+                            <i class="bi bi-geo-alt-fill text-danger me-2"></i>Expedition Status Tracker
+                        </h5>
+                        <button type="button" class="btn-close" @click="showTrackModal = false"></button>
+                    </div>
+                    <div class="modal-body" v-if="trackingBooking">
+                        <!-- Trek Overview Header -->
+                        <div class="p-3 bg-light rounded mb-4">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h5 class="fw-bold mb-1">{{ trackingBooking.trek_name }}</h5>
+                                    <span class="text-muted small">
+                                        <i class="bi bi-geo-alt me-1"></i>{{ trackingBooking.trek_location }} ·
+                                        <i class="bi bi-calendar-event ms-2 me-1"></i>{{ trackingBooking.trek_start_date }} to {{ trackingBooking.trek_end_date }}
+                                    </span>
+                                </div>
+                                <span class="badge bg-primary fs-6">{{ trackingBooking.tracking_label }}</span>
+                            </div>
+                        </div>
+
+                        <!-- 4-Step Visual Progress Stepper -->
+                        <h6 class="fw-bold mb-3">Trek Progress Timeline</h6>
+                        <div class="d-flex justify-content-between position-relative mb-4 text-center">
+                            <!-- Step 1: Confirmed -->
+                            <div class="flex-grow-1">
+                                <div
+                                    class="rounded-circle mx-auto d-flex align-items-center justify-content-center text-white mb-2"
+                                    :class="trackingBooking.tracking_stage >= 1 ? 'bg-success' : 'bg-secondary'"
+                                    style="width: 42px; height: 42px;"
+                                >
+                                    <i class="bi bi-check-circle"></i>
+                                </div>
+                                <div class="small fw-semibold">1. Confirmed</div>
+                                <div class="text-muted" style="font-size: 0.75rem;">Slot Reserved</div>
+                            </div>
+
+                            <!-- Step 2: Started -->
+                            <div class="flex-grow-1">
+                                <div
+                                    class="rounded-circle mx-auto d-flex align-items-center justify-content-center text-white mb-2"
+                                    :class="trackingBooking.tracking_stage >= 2 ? 'bg-success' : 'bg-secondary'"
+                                    style="width: 42px; height: 42px;"
+                                >
+                                    <i class="bi bi-flag"></i>
+                                </div>
+                                <div class="small fw-semibold">2. Started</div>
+                                <div class="text-muted" style="font-size: 0.75rem;">Basecamp Briefing</div>
+                            </div>
+
+                            <!-- Step 3: Ongoing -->
+                            <div class="flex-grow-1">
+                                <div
+                                    class="rounded-circle mx-auto d-flex align-items-center justify-content-center text-white mb-2"
+                                    :class="trackingBooking.tracking_stage >= 3 ? 'bg-warning text-dark' : 'bg-secondary'"
+                                    style="width: 42px; height: 42px;"
+                                >
+                                    <i class="bi bi-compass"></i>
+                                </div>
+                                <div class="small fw-semibold">3. Ongoing</div>
+                                <div class="text-muted" style="font-size: 0.75rem;">On the Trail</div>
+                            </div>
+
+                            <!-- Step 4: Completed -->
+                            <div class="flex-grow-1">
+                                <div
+                                    class="rounded-circle mx-auto d-flex align-items-center justify-content-center text-white mb-2"
+                                    :class="trackingBooking.tracking_stage >= 4 ? 'bg-success' : 'bg-secondary'"
+                                    style="width: 42px; height: 42px;"
+                                >
+                                    <i class="bi bi-trophy"></i>
+                                </div>
+                                <div class="small fw-semibold">4. Completed</div>
+                                <div class="text-muted" style="font-size: 0.75rem;">Summit Achieved</div>
+                            </div>
+                        </div>
+
+                        <!-- Guide and Itinerary Information -->
+                        <div class="border rounded p-3">
+                            <h6 class="fw-bold mb-2">Assigned Trek Guide</h6>
+                            <div class="row g-2 small">
+                                <div class="col-md-6">
+                                    <strong>Guide Name:</strong> {{ trackingBooking.staff_name || 'Unassigned' }}
+                                </div>
+                                <div class="col-md-6" v-if="trackingBooking.staff_phone">
+                                    <strong>Contact:</strong> {{ trackingBooking.staff_phone }}
+                                </div>
+                                <div class="col-md-6" v-if="trackingBooking.staff_email">
+                                    <strong>Email:</strong> {{ trackingBooking.staff_email }}
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Total Duration:</strong> {{ trackingBooking.trek_duration || 'N/A' }} Days
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @click="showTrackModal = false">Close</button>
                     </div>
                 </div>
             </div>

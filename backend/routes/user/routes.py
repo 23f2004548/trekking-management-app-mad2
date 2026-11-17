@@ -129,13 +129,53 @@ def book_trek(trek_id):
     }), 201
 
 
+def serialize_booking_with_tracking(b):
+    d = b.to_dict()
+    if b.status == "Cancelled":
+        d["tracking_stage"] = 0
+        d["tracking_label"] = "Cancelled"
+    elif b.status == "Completed" or (b.trek and b.trek.status == "Completed"):
+        d["tracking_stage"] = 4
+        d["tracking_label"] = "Completed / Summit Achieved"
+    elif b.trek and b.trek.status == "Ongoing":
+        d["tracking_stage"] = 3
+        d["tracking_label"] = "Ongoing Expedition"
+    elif b.trek and b.trek.status == "Started":
+        d["tracking_stage"] = 2
+        d["tracking_label"] = "Expedition Started"
+    else:
+        d["tracking_stage"] = 1
+        d["tracking_label"] = "Confirmed & Scheduled"
+    return d
+
+
 # ── 4. My Bookings ────────────────────────────────────────────────────────────
 @user_bp.route("/bookings", methods=["GET"])
 @jwt_required()
 @role_required("user")
 def get_user_bookings():
-    bookings = Booking.query.filter_by(user_id=current_user.id).order_by(Booking.booking_date.desc()).all()
-    return jsonify({"bookings": [b.to_dict() for b in bookings]}), 200
+    status_filter = request.args.get("status", "all").strip()
+    query = Booking.query.filter_by(user_id=current_user.id)
+
+    if status_filter and status_filter.lower() != "all":
+        query = query.filter(Booking.status.ilike(status_filter))
+
+    bookings = query.order_by(Booking.booking_date.desc()).all()
+    return jsonify({"bookings": [serialize_booking_with_tracking(b) for b in bookings]}), 200
+
+
+@user_bp.route("/bookings/<int:booking_id>", methods=["GET"])
+@jwt_required()
+@role_required("user")
+def get_booking_detail(booking_id):
+    booking = Booking.query.get(booking_id)
+    if not booking:
+        return jsonify({"message": "Booking not found"}), 404
+
+    if booking.user_id != current_user.id:
+        return jsonify({"message": "Forbidden: You can only view your own bookings"}), 403
+
+    return jsonify({"booking": serialize_booking_with_tracking(booking)}), 200
 
 
 # ── 5. Cancel Booking ─────────────────────────────────────────────────────────
@@ -163,7 +203,7 @@ def cancel_booking(booking_id):
     db.session.commit()
     return jsonify({
         "message": "Booking cancelled successfully",
-        "booking": booking.to_dict()
+        "booking": serialize_booking_with_tracking(booking)
     }), 200
 
 
@@ -172,17 +212,30 @@ def cancel_booking(booking_id):
 @jwt_required()
 @role_required("user")
 def history():
-    # Filter completed bookings or bookings where trek is completed
+    # Only non-cancelled bookings where either booking is Completed or trek is Completed
     bookings = (
         Booking.query.join(Trek)
         .filter(
             Booking.user_id == current_user.id,
+            Booking.status != "Cancelled",
             (Booking.status == "Completed") | (Trek.status == "Completed")
         )
         .order_by(Booking.booking_date.desc())
         .all()
     )
-    return jsonify({"history": [b.to_dict() for b in bookings]}), 200
+
+    total_completed = len(bookings)
+    total_days = sum(b.trek.duration for b in bookings if b.trek and b.trek.duration)
+    total_spent = sum(b.trek.price for b in bookings if b.trek and b.trek.price)
+
+    return jsonify({
+        "history": [serialize_booking_with_tracking(b) for b in bookings],
+        "summary": {
+            "total_completed": total_completed,
+            "total_days": total_days,
+            "total_spent": total_spent
+        }
+    }), 200
 
 
 # ── 7. Profile Management ─────────────────────────────────────────────────────
