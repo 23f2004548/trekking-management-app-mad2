@@ -6,7 +6,9 @@ import StatsCard from "../../components/StatsCard.vue"
 
 const router = useRouter()
 const BASE_URL = "http://localhost:5000"
-const token = localStorage.getItem("token")
+function getToken() {
+    return localStorage.getItem("token")
+}
 
 const stats = ref({})
 const recentTreks = ref([])
@@ -15,13 +17,14 @@ const loading = ref(true)
 async function getDashboardData() {
     loading.value = true
     try {
+        const curToken = getToken()
         const res = await axios.get(`${BASE_URL}/admin/dashboard`, {
-            headers: { Authorization: "Bearer " + token }
+            headers: { Authorization: "Bearer " + curToken }
         })
         stats.value = res.data
 
         const trekRes = await axios.get(`${BASE_URL}/admin/treks`, {
-            headers: { Authorization: "Bearer " + token }
+            headers: { Authorization: "Bearer " + curToken }
         })
         recentTreks.value = trekRes.data.slice(0, 5)
     } catch (err) {

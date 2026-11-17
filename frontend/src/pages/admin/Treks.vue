@@ -3,7 +3,9 @@ import { ref, onMounted } from "vue"
 import axios from "axios"
 
 const BASE_URL = "http://localhost:5000"
-const token = localStorage.getItem("token")
+function getToken() {
+    return localStorage.getItem("token")
+}
 
 const treks = ref([])
 const staffList = ref([])
@@ -31,15 +33,21 @@ const form = ref({
 
 async function fetchTreks() {
     loading.value = true
+    error.value = ""
     try {
+        const curToken = getToken()
         const [trekRes, staffRes] = await Promise.all([
-            axios.get(`${BASE_URL}/admin/treks`, { headers: { Authorization: "Bearer " + token } }),
-            axios.get(`${BASE_URL}/admin/staff`, { headers: { Authorization: "Bearer " + token } })
+            axios.get(`${BASE_URL}/admin/treks`, { headers: { Authorization: "Bearer " + curToken } }),
+            axios.get(`${BASE_URL}/admin/staff`, { headers: { Authorization: "Bearer " + curToken } })
         ])
-        treks.value = trekRes.data
-        staffList.value = staffRes.data
+        treks.value = trekRes.data || []
+        staffList.value = staffRes.data || []
     } catch (err) {
-        error.value = "Failed to load data"
+        if (err.response?.status === 401) {
+            error.value = "Session expired. Please log in again."
+        } else {
+            error.value = err.response?.data?.message || "Failed to load data"
+        }
     } finally {
         loading.value = false
     }
@@ -91,12 +99,12 @@ async function saveTrek() {
     try {
         if (isEditing.value) {
             await axios.put(`${BASE_URL}/admin/treks/${editId.value}`, form.value, {
-                headers: { Authorization: "Bearer " + token }
+                headers: { Authorization: "Bearer " + getToken() }
             })
             success.value = "Trek updated successfully"
         } else {
             await axios.post(`${BASE_URL}/admin/treks`, form.value, {
-                headers: { Authorization: "Bearer " + token }
+                headers: { Authorization: "Bearer " + getToken() }
             })
             success.value = "Trek created successfully"
         }
@@ -111,7 +119,7 @@ async function deleteTrek(id) {
     if (!confirm("Are you sure you want to delete this trek route?")) return
     try {
         await axios.delete(`${BASE_URL}/admin/treks/${id}`, {
-            headers: { Authorization: "Bearer " + token }
+            headers: { Authorization: "Bearer " + getToken() }
         })
         fetchTreks()
     } catch (err) {
