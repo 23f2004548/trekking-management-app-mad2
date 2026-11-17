@@ -1,5 +1,5 @@
 from celery import shared_task
-from models.db_models import db, User, Trek, Booking
+from models.models import db, Users, Treks, Staff, Bookings, User, Trek, StaffProfile, Booking
 import csv
 import os
 from datetime import datetime, date, timedelta

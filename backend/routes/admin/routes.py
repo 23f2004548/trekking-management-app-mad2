@@ -1,25 +1,35 @@
+from functools import wraps
 from flask import request, jsonify
 from flask_jwt_extended import jwt_required, current_user
 from role_required import role_required
-from models.db_models import db, User, StaffProfile, Trek, Booking
+from models.models import db, Users, Treks, Staff, Bookings, User, Trek, StaffProfile, Booking
 from datetime import datetime
 from cache import cache
 from . import admin_bp
 
-# ── 1. Dashboard Stats ────────────────────────────────────────────────────────
+# ── Admin Required Decorator (MAD 1: admin_required) ──────────────────────────
+def admin_required(f):
+    @wraps(f)
+    @jwt_required()
+    @role_required("admin")
+    def decorated(*args, **kwargs):
+        return f(*args, **kwargs)
+    return decorated
+
+
+# ── 1. Dashboard Stats (MAD 1: dashboard) ──────────────────────────────────────
 @admin_bp.route("/dashboard", methods=["GET"])
-@jwt_required()
-@role_required("admin")
+@admin_required
 @cache.cached(timeout=60)
 def dashboard():
-    total_treks = Trek.query.count()
-    total_users = User.query.filter_by(role="user").count()
-    total_staff = StaffProfile.query.count()
-    total_bookings = Booking.query.count()
-    open_treks = Trek.query.filter_by(status="Open").count()
-    active_bookings = Booking.query.filter_by(status="Booked").count()
-    blocked_users = User.query.filter_by(is_active=False).count()
-    blacklisted_staff = StaffProfile.query.filter_by(status="blacklisted").count()
+    total_treks = Treks.query.count()
+    total_users = Users.query.filter_by(role="user").count()
+    total_staff = Staff.query.count()
+    total_bookings = Bookings.query.count()
+    open_treks = Treks.query.filter_by(status="Open").count()
+    active_bookings = Bookings.query.filter_by(status="Booked").count()
+    blocked_users = Users.query.filter_by(is_active=False).count()
+    blacklisted_staff = Staff.query.filter_by(status="blacklisted").count()
 
     return jsonify({
         "total_treks": total_treks,
@@ -33,23 +43,25 @@ def dashboard():
     }), 200
 
 
-# ── 2. Treks Management (CRUD & Assign Staff) ─────────────────────────────────
+# ── 2. Treks Management (MAD 1: treks, add_trek, edit_trek, delete_trek) ──────
 @admin_bp.route("/treks", methods=["GET"])
-@jwt_required()
-@role_required("admin")
+@admin_required
 @cache.cached(timeout=60)
-def get_all_treks():
-    treks = Trek.query.order_by(Trek.created_at.desc()).all()
-    return jsonify([t.to_dict() for t in treks]), 200
+def treks():
+    all_treks = Treks.query.order_by(Treks.created_at.desc()).all()
+    return jsonify([t.to_dict() for t in all_treks]), 200
+
+# Alias for backwards compatibility
+get_all_treks = treks
 
 
 @admin_bp.route("/treks", methods=["POST"])
-@jwt_required()
-@role_required("admin")
+@admin_bp.route("/add_treks", methods=["POST"])
+@admin_required
 def add_trek():
     data = request.get_json() or {}
     try:
-        trek = Trek(
+        trek = Treks(
             name=data["name"].strip(),
             location=data["location"].strip(),
             difficulty=data.get("difficulty", "Easy"),
@@ -72,11 +84,11 @@ def add_trek():
         return jsonify({"message": str(e)}), 400
 
 
-@admin_bp.route("/treks/<int:trek_id>", methods=["PUT"])
-@jwt_required()
-@role_required("admin")
-def update_trek(trek_id):
-    trek = Trek.query.get_or_404(trek_id)
+@admin_bp.route("/treks/<int:trek_id>", methods=["PUT", "POST"])
+@admin_bp.route("/treks/edit/<int:trek_id>", methods=["PUT", "POST"])
+@admin_required
+def edit_trek(trek_id):
+    trek = Treks.query.get_or_404(trek_id)
     data = request.get_json() or {}
     try:
         if "name" in data: trek.name = data["name"].strip()
@@ -88,7 +100,7 @@ def update_trek(trek_id):
         if "status" in data:
             trek.status = data["status"]
             if trek.status == "Completed":
-                active_bookings = Booking.query.filter_by(trek_id=trek.id).filter(Booking.status.in_(["Booked", "Confirmed"])).all()
+                active_bookings = Bookings.query.filter_by(trek_id=trek.id).filter(Bookings.status.in_(["Booked", "Confirmed"])).all()
                 for b in active_bookings:
                     b.status = "Completed"
         if "description" in data: trek.description = data["description"]
@@ -107,31 +119,39 @@ def update_trek(trek_id):
         db.session.rollback()
         return jsonify({"message": str(e)}), 400
 
+# Alias for backwards compatibility
+update_trek = edit_trek
+
 
 @admin_bp.route("/treks/<int:trek_id>", methods=["DELETE"])
-@jwt_required()
-@role_required("admin")
+@admin_bp.route("/treks/delete/<int:trek_id>", methods=["DELETE", "POST"])
+@admin_required
 def delete_trek(trek_id):
-    trek = Trek.query.get_or_404(trek_id)
+    trek = Treks.query.get_or_404(trek_id)
     db.session.delete(trek)
     db.session.commit()
     cache.clear()
     return jsonify({"message": "Trek deleted successfully"}), 200
 
 
-# ── 3. Staff Management ───────────────────────────────────────────────────────
+# ── 3. Staff Management (MAD 1: staff, change_staff_status) ────────────────────
 @admin_bp.route("/staff", methods=["GET"])
-@jwt_required()
-@role_required("admin")
+@admin_required
 @cache.cached(timeout=60)
-def get_all_staff():
-    staff_list = StaffProfile.query.order_by(StaffProfile.created_at.desc()).all()
+def staff():
+    status = request.args.get("status")
+    query = Staff.query
+    if status:
+        query = query.filter_by(status=status)
+    staff_list = query.order_by(Staff.created_at.desc()).all()
     return jsonify([s.to_dict() for s in staff_list]), 200
+
+# Alias for backwards compatibility
+get_all_staff = staff
 
 
 @admin_bp.route("/staff", methods=["POST"])
-@jwt_required()
-@role_required("admin")
+@admin_required
 def add_staff():
     data = request.get_json() or {}
     username = data.get("username", "").strip()
@@ -144,14 +164,13 @@ def add_staff():
     if not username or not name or not email:
         return jsonify({"message": "Username, name, and email are required"}), 400
 
-    if User.query.filter_by(username=username).first():
+    if Users.query.filter_by(username=username).first():
         return jsonify({"message": "Username already exists"}), 409
 
-    if User.query.filter_by(email=email).first():
+    if Users.query.filter_by(email=email).first():
         return jsonify({"message": "Email already registered"}), 409
 
-    # Create user credentials with role 'staff'
-    staff_user = User(
+    staff_user = Users(
         username=username,
         name=name,
         email=email,
@@ -162,8 +181,7 @@ def add_staff():
     db.session.add(staff_user)
     db.session.flush()
 
-    # Create associated StaffProfile
-    profile = StaffProfile(
+    profile = Staff(
         user_id=staff_user.id,
         name=name,
         email=email,
@@ -179,34 +197,41 @@ def add_staff():
 
 
 @admin_bp.route("/staff/<int:staff_id>/toggle-status", methods=["POST"])
-@jwt_required()
-@role_required("admin")
-def toggle_staff_status(staff_id):
-    staff = StaffProfile.query.get_or_404(staff_id)
-    if staff.status == "active":
-        staff.status = "blacklisted"
-        if staff.user:
-            staff.user.is_active = False
+@admin_bp.route("/staff/status/<int:staff_id>/<string:status>", methods=["POST"])
+@admin_required
+def change_staff_status(staff_id, status=None):
+    staff_member = Staff.query.get_or_404(staff_id)
+    if status:
+        staff_member.status = status
+        if staff_member.user:
+            staff_member.user.is_active = (status.lower() == "approved" or status.lower() == "active")
     else:
-        staff.status = "active"
-        if staff.user:
-            staff.user.is_active = True
+        if staff_member.status == "active":
+            staff_member.status = "blacklisted"
+            if staff_member.user:
+                staff_member.user.is_active = False
+        else:
+            staff_member.status = "active"
+            if staff_member.user:
+                staff_member.user.is_active = True
 
     db.session.commit()
     cache.clear()
     return jsonify({
-        "message": f"Staff status updated to {staff.status}",
-        "staff": staff.to_dict()
+        "message": f"Staff status updated to {staff_member.status}",
+        "staff": staff_member.to_dict()
     }), 200
+
+# Alias for backwards compatibility
+toggle_staff_status = change_staff_status
 
 
 @admin_bp.route("/staff/<int:staff_id>", methods=["DELETE"])
-@jwt_required()
-@role_required("admin")
+@admin_required
 def delete_staff(staff_id):
-    staff = StaffProfile.query.get_or_404(staff_id)
-    user = User.query.get(staff.user_id)
-    db.session.delete(staff)
+    staff_member = Staff.query.get_or_404(staff_id)
+    user = Users.query.get(staff_member.user_id)
+    db.session.delete(staff_member)
     if user:
         db.session.delete(user)
     db.session.commit()
@@ -214,21 +239,22 @@ def delete_staff(staff_id):
     return jsonify({"message": "Staff member deleted successfully"}), 200
 
 
-# ── 4. Users Management (Trekkers) ────────────────────────────────────────────
+# ── 4. Users Management (MAD 1: users, delete_user) ───────────────────────────
 @admin_bp.route("/users", methods=["GET"])
-@jwt_required()
-@role_required("admin")
+@admin_required
 @cache.cached(timeout=60)
-def get_all_users():
-    users = User.query.filter_by(role="user").order_by(User.created_at.desc()).all()
-    return jsonify([u.to_dict() for u in users]), 200
+def users():
+    all_users = Users.query.filter_by(role="user").order_by(Users.created_at.desc()).all()
+    return jsonify([u.to_dict() for u in all_users]), 200
+
+# Alias for backwards compatibility
+get_all_users = users
 
 
 @admin_bp.route("/users/<int:user_id>/toggle-active", methods=["POST"])
-@jwt_required()
-@role_required("admin")
+@admin_required
 def toggle_user_active(user_id):
-    user = User.query.get_or_404(user_id)
+    user = Users.query.get_or_404(user_id)
     if user.role == "admin":
         return jsonify({"message": "Cannot deactivate an administrator"}), 403
 
@@ -242,10 +268,10 @@ def toggle_user_active(user_id):
 
 
 @admin_bp.route("/users/<int:user_id>", methods=["DELETE"])
-@jwt_required()
-@role_required("admin")
+@admin_bp.route("/users/delete/<int:user_id>", methods=["POST", "DELETE"])
+@admin_required
 def delete_user(user_id):
-    user = User.query.get_or_404(user_id)
+    user = Users.query.get_or_404(user_id)
     if user.role == "admin":
         return jsonify({"message": "Cannot delete an administrator"}), 403
     db.session.delete(user)
@@ -254,50 +280,54 @@ def delete_user(user_id):
     return jsonify({"message": "User deleted successfully"}), 200
 
 
-# ── 5. Bookings & Trekking History ────────────────────────────────────────────
+# ── 5. Bookings Management (MAD 1: bookings, change_booking_status) ───────────
 @admin_bp.route("/bookings", methods=["GET"])
-@jwt_required()
-@role_required("admin")
-def get_all_bookings():
+@admin_required
+def bookings():
     status = request.args.get("status", "all").strip()
     trek_id = request.args.get("trek_id")
     user_id = request.args.get("user_id")
-    search = request.args.get("search", "").strip()
+    search_term = request.args.get("search", "").strip()
 
-    query = Booking.query.join(Trek).join(User)
+    query = Bookings.query.join(Treks).join(Users)
 
     if status and status.lower() != "all":
-        query = query.filter(Booking.status.ilike(status))
+        query = query.filter(Bookings.status.ilike(status))
     if trek_id:
-        query = query.filter(Booking.trek_id == int(trek_id))
+        query = query.filter(Bookings.trek_id == int(trek_id))
     if user_id:
-        query = query.filter(Booking.user_id == int(user_id))
-    if search:
+        query = query.filter(Bookings.user_id == int(user_id))
+    if search_term:
         query = query.filter(
-            (Trek.name.ilike(f"%{search}%")) |
-            (User.name.ilike(f"%{search}%")) |
-            (User.email.ilike(f"%{search}%"))
+            (Treks.name.ilike(f"%{search_term}%")) |
+            (Users.name.ilike(f"%{search_term}%")) |
+            (Users.email.ilike(f"%{search_term}%"))
         )
 
-    bookings = query.order_by(Booking.booking_date.desc()).all()
-    return jsonify([b.to_dict() for b in bookings]), 200
+    all_bookings = query.order_by(Bookings.booking_date.desc()).all()
+    return jsonify([b.to_dict() for b in all_bookings]), 200
+
+# Alias for backwards compatibility
+get_all_bookings = bookings
 
 
 @admin_bp.route("/bookings/<int:booking_id>/status", methods=["POST"])
-@jwt_required()
-@role_required("admin")
-def update_booking_status(booking_id):
-    booking = Booking.query.get_or_404(booking_id)
-    data = request.get_json() or {}
-    new_status = data.get("status")
+@admin_bp.route("/bookings/status/<int:booking_id>/<string:status>", methods=["POST"])
+@admin_required
+def change_booking_status(booking_id, status=None):
+    booking = Bookings.query.get_or_404(booking_id)
+    if not status:
+        data = request.get_json() or {}
+        new_status = data.get("status")
+    else:
+        new_status = status.capitalize()
 
-    if new_status not in ["Pending", "Booked", "Cancelled", "Completed"]:
+    if new_status not in ["Pending", "Booked", "Confirmed", "Cancelled", "Completed"]:
         return jsonify({"message": "Invalid booking status"}), 400
 
-    # If status changes to Cancelled, return the slot to the trek
     if new_status == "Cancelled" and booking.status != "Cancelled":
         booking.trek.available_slots += 1
-    elif booking.status == "Cancelled" and new_status in ["Booked", "Pending"]:
+    elif booking.status == "Cancelled" and new_status in ["Booked", "Pending", "Confirmed"]:
         if booking.trek.available_slots > 0:
             booking.trek.available_slots -= 1
         else:
@@ -308,72 +338,66 @@ def update_booking_status(booking_id):
     cache.clear()
     return jsonify({"message": "Booking status updated successfully", "booking": booking.to_dict()}), 200
 
+# Alias for backwards compatibility
+update_booking_status = change_booking_status
 
-# ── 6. Search (by Name or ID) ─────────────────────────────────────────────────
+
+# ── 6. Search (MAD 1: search) ──────────────────────────────────────────────────
 @admin_bp.route("/search", methods=["GET"])
-@jwt_required()
-@role_required("admin")
+@admin_required
 def search():
-    query = request.args.get("q", "").strip()
+    query_str = (request.args.get("search") or request.args.get("q") or "").strip()
     search_type = request.args.get("type", "all").lower()
 
-    treks = []
-    users = []
-    staff = []
+    treks_res = []
+    users_res = []
+    staff_res = []
 
-    if not query:
+    if not query_str:
         return jsonify({"treks": [], "users": [], "staff": []}), 200
 
-    # Check if query is an integer ID
-    is_id = query.isdigit()
+    is_id = query_str.isdigit()
 
-    # Search Treks
     if search_type in ["trek", "all"]:
-        trek_q = Trek.query.filter(Trek.name.ilike(f"%{query}%"))
+        trek_q = Treks.query.filter(Treks.name.ilike(f"%{query_str}%"))
         if is_id:
-            trek_q = Trek.query.filter((Trek.id == int(query)) | (Trek.name.ilike(f"%{query}%")))
-        treks = [t.to_dict() for t in trek_q.all()]
+            trek_q = Treks.query.filter((Treks.id == int(query_str)) | (Treks.name.ilike(f"%{query_str}%")))
+        treks_res = [t.to_dict() for t in trek_q.all()]
 
-    # Search Users (Trekkers)
     if search_type in ["user", "all"]:
-        user_q = User.query.filter(User.role == "user", (User.name.ilike(f"%{query}%")) | (User.username.ilike(f"%{query}%")))
+        user_q = Users.query.filter(Users.role == "user", (Users.name.ilike(f"%{query_str}%")) | (Users.username.ilike(f"%{query_str}%")))
         if is_id:
-            user_q = User.query.filter(User.role == "user", (User.id == int(query)) | (User.name.ilike(f"%{query}%")) | (User.username.ilike(f"%{query}%")))
-        users = [u.to_dict() for u in user_q.all()]
+            user_q = Users.query.filter(Users.role == "user", (Users.id == int(query_str)) | (Users.name.ilike(f"%{query_str}%")) | (Users.username.ilike(f"%{query_str}%")))
+        users_res = [u.to_dict() for u in user_q.all()]
 
-    # Search Staff
     if search_type in ["staff", "all"]:
-        staff_q = StaffProfile.query.filter(StaffProfile.name.ilike(f"%{query}%"))
+        staff_q = Staff.query.filter(Staff.name.ilike(f"%{query_str}%"))
         if is_id:
-            staff_q = StaffProfile.query.filter((StaffProfile.id == int(query)) | (StaffProfile.name.ilike(f"%{query}%")))
-        staff = [s.to_dict() for s in staff_q.all()]
+            staff_q = Staff.query.filter((Staff.id == int(query_str)) | (Staff.name.ilike(f"%{query_str}%")))
+        staff_res = [s.to_dict() for s in staff_q.all()]
 
-    return jsonify({"treks": treks, "users": users, "staff": staff}), 200
+    return jsonify({"treks": treks_res, "users": users_res, "staff": staff_res}), 200
 
 
-# ── 7. Trekking Statistics & Reports ──────────────────────────────────────────
+# ── 7. Reports (MAD 1: reports) ────────────────────────────────────────────────
 @admin_bp.route("/reports", methods=["GET"])
-@jwt_required()
-@role_required("admin")
+@admin_required
 @cache.cached(timeout=60)
 def reports():
-    total_treks = Trek.query.count()
-    total_bookings = Booking.query.count()
-    active_users = User.query.filter_by(role="user", is_active=True).count()
-    completed_treks = Trek.query.filter_by(status="Completed").count()
+    total_treks = Treks.query.count()
+    total_bookings = Bookings.query.count()
+    active_users = Users.query.filter_by(role="user", is_active=True).count()
+    completed_treks = Treks.query.filter_by(status="Completed").count()
 
-    # Status counts
-    booked_count = Booking.query.filter_by(status="Booked").count()
-    cancelled_count = Booking.query.filter_by(status="Cancelled").count()
-    completed_booking_count = Booking.query.filter_by(status="Completed").count()
+    booked_count = Bookings.query.filter_by(status="Booked").count()
+    cancelled_count = Bookings.query.filter_by(status="Cancelled").count()
+    completed_booking_count = Bookings.query.filter_by(status="Completed").count()
 
-    # Difficulty distribution
-    easy_count = Trek.query.filter(Trek.difficulty.ilike("easy")).count()
-    moderate_count = Trek.query.filter(Trek.difficulty.ilike("moderate")).count()
-    hard_count = Trek.query.filter(Trek.difficulty.ilike("hard")).count()
+    easy_count = Treks.query.filter(Treks.difficulty.ilike("easy")).count()
+    moderate_count = Treks.query.filter(Treks.difficulty.ilike("moderate")).count()
+    hard_count = Treks.query.filter(Treks.difficulty.ilike("hard")).count()
 
-    # Popular treks (by booking count)
-    all_treks = Trek.query.all()
+    all_treks = Treks.query.all()
     popular_treks = []
     for t in all_treks:
         b_count = len(t.bookings)
@@ -406,10 +430,29 @@ def reports():
     }), 200
 
 
-# ── 8. Celery Batch Jobs (Milestone 7) ─────────────────────────────────────────
+# ── 8. Profile (MAD 1: profile) ────────────────────────────────────────────────
+@admin_bp.route("/profile", methods=["GET", "POST", "PUT"])
+@admin_required
+def profile():
+    if request.method in ["POST", "PUT"]:
+        data = request.get_json() or {}
+        name = data.get("name")
+        email = data.get("email")
+        if email:
+            existing = Users.query.filter_by(email=email).first()
+            if existing and existing.id != current_user.id:
+                return jsonify({"message": "Email already taken"}), 400
+            current_user.email = email
+        if name:
+            current_user.name = name
+        db.session.commit()
+        return jsonify({"message": "Profile updated successfully", "user": current_user.to_dict()}), 200
+    return jsonify({"user": current_user.to_dict()}), 200
+
+
+# ── 9. Celery Batch Jobs (Milestone 7) ─────────────────────────────────────────
 @admin_bp.route("/jobs/monthly-report", methods=["POST"])
-@jwt_required()
-@role_required("admin")
+@admin_required
 def trigger_monthly_report():
     try:
         from task import monthly_report
@@ -429,8 +472,7 @@ def trigger_monthly_report():
 
 
 @admin_bp.route("/jobs/daily-reminders", methods=["POST"])
-@jwt_required()
-@role_required("admin")
+@admin_required
 def trigger_daily_reminders():
     try:
         from task import daily_reminders
@@ -449,8 +491,7 @@ def trigger_daily_reminders():
 
 
 @admin_bp.route("/reports/files", methods=["GET"])
-@jwt_required()
-@role_required("admin")
+@admin_required
 def list_generated_reports():
     import os
     backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -466,11 +507,9 @@ def list_generated_reports():
     return jsonify({"reports": files}), 200
 
 
-# ── 9. Redis Cache Control (Milestone 8) ───────────────────────────────────────
+# ── 10. Redis Cache Control (Milestone 8) ──────────────────────────────────────
 @admin_bp.route("/cache/clear", methods=["POST"])
-@jwt_required()
-@role_required("admin")
+@admin_required
 def clear_api_cache():
     cache.clear()
     return jsonify({"message": "API cache cleared successfully"}), 200
-

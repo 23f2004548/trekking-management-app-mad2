@@ -1,9 +1,10 @@
 from flask import request, jsonify
-from models.db_models import db, User, StaffProfile
+from models.models import db, Users, Staff, User, StaffProfile
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import create_access_token, jwt_required, current_user
 from . import auth_bp
 
+# ── 1. Login (MAD 1: login) ───────────────────────────────────────────────────
 @auth_bp.route("/login", methods=["POST"])
 def login():
     """
@@ -18,9 +19,8 @@ def login():
     if not identifier or not password:
         return jsonify({"message": "Username/Email and password are required"}), 400
 
-    # Match by either username or email
-    user = User.query.filter(
-        (User.username == identifier) | (User.email == identifier)
+    user = Users.query.filter(
+        (Users.username == identifier) | (Users.email == identifier)
     ).first()
 
     if not user:
@@ -32,9 +32,8 @@ def login():
     if not user.is_active:
         return jsonify({"message": "Your account has been deactivated. Please contact support."}), 403
 
-    # Additional check for staff blacklist status
     if user.role == "staff":
-        staff_profile = StaffProfile.query.filter_by(user_id=user.id).first()
+        staff_profile = Staff.query.filter_by(user_id=user.id).first()
         if staff_profile and staff_profile.status == "blacklisted":
             return jsonify({"message": "Your staff account has been blacklisted."}), 403
 
@@ -46,6 +45,17 @@ def login():
     }), 200
 
 
+# ── 2. Logout (MAD 1: logout) ─────────────────────────────────────────────────
+@auth_bp.route("/logout", methods=["GET", "POST"])
+def logout():
+    """
+    Logout endpoint.
+    Client clears stored JWT token and role from localStorage.
+    """
+    return jsonify({"message": "Successfully logged out"}), 200
+
+
+# ── 3. Register (MAD 1: register) ─────────────────────────────────────────────
 @auth_bp.route("/register", methods=["POST"])
 def register():
     """
@@ -61,7 +71,6 @@ def register():
     password = data.get("password", "")
     requested_role = data.get("role", "user").strip().lower()
 
-    # Rule enforcement: Only trekkers ('user') can self-register
     if requested_role in ["admin", "staff"]:
         return jsonify({
             "message": "Registration restricted: Staff accounts must be created by Admin, and Admin accounts cannot be registered."
@@ -76,13 +85,13 @@ def register():
     if len(password) < 6:
         return jsonify({"message": "Password must be at least 6 characters long"}), 400
 
-    if User.query.filter_by(username=username).first():
+    if Users.query.filter_by(username=username).first():
         return jsonify({"message": "Username already taken"}), 409
 
-    if User.query.filter_by(email=email).first():
+    if Users.query.filter_by(email=email).first():
         return jsonify({"message": "Email already registered"}), 409
 
-    new_user = User(
+    new_user = Users(
         username=username,
         name=name,
         email=email,
@@ -99,10 +108,10 @@ def register():
     }), 201
 
 
+# ── 4. Current User Session Check ─────────────────────────────────────────────
 @auth_bp.route("/whoami", methods=["GET"])
 @jwt_required()
 def whoami():
-    """Returns the current authenticated user's details."""
     if not current_user:
         return jsonify({"message": "User not found"}), 404
     return jsonify(current_user.to_dict()), 200

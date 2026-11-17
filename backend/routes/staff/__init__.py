@@ -1,5 +1,6 @@
 from flask import Blueprint
 
-staff_bp = Blueprint("staff_bp", __name__, url_prefix="/staff")
+staff = Blueprint("staff", __name__, url_prefix="/staff")
+staff_bp = staff
 
 from . import routes

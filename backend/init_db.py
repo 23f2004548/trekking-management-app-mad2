@@ -5,7 +5,7 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 from app import app
-from models.db_models import db, User, StaffProfile, Trek, Booking
+from models.models import db, Users, Staff, Treks, Bookings, User, StaffProfile, Trek, Booking
 from werkzeug.security import generate_password_hash
 
 def init_database():

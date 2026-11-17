@@ -1,39 +1,49 @@
+from functools import wraps
 from flask import request, jsonify
 from flask_jwt_extended import jwt_required, current_user
 from role_required import role_required
-from models.db_models import db, User, StaffProfile, Trek, Booking
+from models.models import db, Users, Treks, Staff, Bookings, User, Trek, StaffProfile, Booking
 from cache import cache
 from . import staff_bp
+
+
+# ── Staff Required Decorator (MAD 1: staff_required) ──────────────────────────
+def staff_required(f):
+    @wraps(f)
+    @jwt_required()
+    @role_required("staff")
+    def decorated(*args, **kwargs):
+        return f(*args, **kwargs)
+    return decorated
 
 
 def get_current_staff():
     """Helper to retrieve the authenticated staff profile."""
     if not current_user:
         return None
-    return StaffProfile.query.filter_by(user_id=current_user.id).first()
+    return Staff.query.filter_by(user_id=current_user.id).first()
 
 
-# ── 1. Staff Dashboard ────────────────────────────────────────────────────────
+# ── 1. Staff Dashboard (MAD 1: dashboard) ──────────────────────────────────────
 @staff_bp.route("/dashboard", methods=["GET"])
-@jwt_required()
-@role_required("staff")
+@staff_required
 @cache.cached(timeout=60)
 def dashboard():
-    staff = get_current_staff()
-    if not staff:
+    staff_member = get_current_staff()
+    if not staff_member:
         return jsonify({"message": "Staff profile not found"}), 404
 
-    if staff.status == "blacklisted":
+    if staff_member.status == "blacklisted":
         return jsonify({"message": "Your staff account has been blacklisted"}), 403
 
-    my_treks = Trek.query.filter_by(staff_id=staff.id).all()
+    my_treks = Treks.query.filter_by(staff_id=staff_member.id).all()
     assigned_count = len(my_treks)
     open_count = sum(1 for t in my_treks if t.status == "Open")
 
     trek_summaries = []
     total_participants = 0
     for t in my_treks:
-        active_bookings = Booking.query.filter_by(trek_id=t.id, status="Booked").count()
+        active_bookings = Bookings.query.filter_by(trek_id=t.id, status="Booked").count()
         total_participants += active_bookings
         trek_summaries.append({
             "id": t.id,
@@ -51,7 +61,7 @@ def dashboard():
         })
 
     return jsonify({
-        "staff": staff.to_dict(),
+        "staff": staff_member.to_dict(),
         "assigned_treks": assigned_count,
         "open_treks": open_count,
         "total_participants": total_participants,
@@ -59,42 +69,42 @@ def dashboard():
     }), 200
 
 
-# ── 2. View Only Assigned Treks ───────────────────────────────────────────────
+# ── 2. Assigned Treks (MAD 1: treks) ──────────────────────────────────────────
 @staff_bp.route("/treks", methods=["GET"])
-@jwt_required()
-@role_required("staff")
-def get_my_treks():
-    staff = get_current_staff()
-    if not staff:
+@staff_required
+def treks():
+    staff_member = get_current_staff()
+    if not staff_member:
         return jsonify({"message": "Staff profile not found"}), 404
 
-    treks = Trek.query.filter_by(staff_id=staff.id).order_by(Trek.start_date.asc()).all()
+    my_treks = Treks.query.filter_by(staff_id=staff_member.id).order_by(Treks.start_date.asc()).all()
     result = []
-    for t in treks:
+    for t in my_treks:
         d = t.to_dict()
-        d["registered_trekkers"] = Booking.query.filter_by(trek_id=t.id, status="Booked").count()
+        d["registered_trekkers"] = Bookings.query.filter_by(trek_id=t.id, status="Booked").count()
         result.append(d)
     return jsonify(result), 200
 
+# Alias for backwards compatibility
+get_my_treks = treks
 
-# ── 3. Update Available Slots and Trek Status ─────────────────────────────────
-@staff_bp.route("/treks/<int:trek_id>", methods=["PUT"])
-@jwt_required()
-@role_required("staff")
-def update_my_trek(trek_id):
-    staff = get_current_staff()
-    if not staff:
+
+# ── 3. Edit Trek (MAD 1: edit_trek) ───────────────────────────────────────────
+@staff_bp.route("/treks/<int:trek_id>", methods=["PUT", "POST"])
+@staff_bp.route("/treks/edit/<int:trek_id>", methods=["PUT", "POST"])
+@staff_required
+def edit_trek(trek_id):
+    staff_member = get_current_staff()
+    if not staff_member:
         return jsonify({"message": "Staff profile not found"}), 404
 
-    trek = Trek.query.get_or_404(trek_id)
+    trek = Treks.query.get_or_404(trek_id)
 
-    # Strictly ensure only assigned staff can manage their trek
-    if trek.staff_id != staff.id:
+    if trek.staff_id != staff_member.id:
         return jsonify({"message": "Forbidden: You are only authorized to manage your assigned treks"}), 403
 
     data = request.get_json() or {}
 
-    # Update available slots
     if "available_slots" in data:
         new_slots = int(data["available_slots"])
         if new_slots < 0:
@@ -103,7 +113,6 @@ def update_my_trek(trek_id):
             return jsonify({"message": f"Available slots cannot exceed total slots ({trek.total_slots})"}), 400
         trek.available_slots = new_slots
 
-    # Update trek status: Open / Closed / Started / Ongoing / Completed
     if "status" in data:
         valid_statuses = ["Open", "Closed", "Started", "Ongoing", "Completed", "Pending", "Approved"]
         new_status = data["status"]
@@ -111,8 +120,7 @@ def update_my_trek(trek_id):
             return jsonify({"message": f"Invalid status. Allowed: {valid_statuses}"}), 400
         trek.status = new_status
         if new_status == "Completed":
-            # Auto-complete active participants on trek completion
-            active_bookings = Booking.query.filter_by(trek_id=trek.id).filter(Booking.status.in_(["Booked", "Confirmed"])).all()
+            active_bookings = Bookings.query.filter_by(trek_id=trek.id).filter(Bookings.status.in_(["Booked", "Confirmed"])).all()
             for b in active_bookings:
                 b.status = "Completed"
 
@@ -123,63 +131,74 @@ def update_my_trek(trek_id):
         "trek": trek.to_dict()
     }), 200
 
+# Alias for backwards compatibility
+update_my_trek = edit_trek
 
-# ── 4. View Registered Users / Participants for Assigned Trek ─────────────────
+
+# ── 4. Participants (MAD 1: participants) ──────────────────────────────────────
 @staff_bp.route("/treks/<int:trek_id>/participants", methods=["GET"])
-@jwt_required()
-@role_required("staff")
-def get_trek_participants(trek_id):
-    staff = get_current_staff()
-    if not staff:
+@staff_bp.route("/participants", methods=["GET"])
+@staff_required
+def participants(trek_id=None):
+    staff_member = get_current_staff()
+    if not staff_member:
         return jsonify({"message": "Staff profile not found"}), 404
 
-    trek = Trek.query.get_or_404(trek_id)
+    if trek_id is None:
+        t_id = request.args.get("trek_id")
+        if t_id:
+            trek_id = int(t_id)
 
-    # Ownership check: Ensure only assigned staff can view participants
-    if trek.staff_id != staff.id:
-        return jsonify({"message": "Forbidden: You are not assigned to this trek"}), 403
+    if trek_id:
+        trek = Treks.query.get_or_404(trek_id)
+        if trek.staff_id != staff_member.id:
+            return jsonify({"message": "Forbidden: You are not assigned to this trek"}), 403
 
-    bookings = Booking.query.filter_by(trek_id=trek.id).order_by(Booking.booking_date.asc()).all()
-    participants = []
-    for b in bookings:
-        participants.append({
-            "booking_id": b.id,
-            "user_id": b.user_id,
-            "user_name": b.user.name if b.user else "N/A",
-            "user_email": b.user.email if b.user else "N/A",
-            "user_username": b.user.username if b.user else "N/A",
-            "booking_date": b.booking_date.strftime("%Y-%m-%d %H:%M") if b.booking_date else None,
-            "status": b.status,
-            "payment_status": b.payment_status
-        })
+        trek_bookings = Bookings.query.filter_by(trek_id=trek.id).order_by(Bookings.booking_date.asc()).all()
+        part_list = []
+        for b in trek_bookings:
+            part_list.append({
+                "booking_id": b.id,
+                "user_id": b.user_id,
+                "user_name": b.user.name if b.user else "N/A",
+                "user_email": b.user.email if b.user else "N/A",
+                "user_username": b.user.username if b.user else "N/A",
+                "booking_date": b.booking_date.strftime("%Y-%m-%d %H:%M") if b.booking_date else None,
+                "status": b.status,
+                "payment_status": b.payment_status
+            })
+        return jsonify({
+            "trek": trek.to_dict(),
+            "participants": part_list
+        }), 200
+    else:
+        # Return all assigned treks with their participant lists
+        my_treks = Treks.query.filter_by(staff_id=staff_member.id).all()
+        return jsonify({"treks": [t.to_dict() for t in my_treks]}), 200
 
-    return jsonify({
-        "trek": trek.to_dict(),
-        "participants": participants
-    }), 200
+# Alias for backwards compatibility
+get_trek_participants = participants
 
 
-# ── 5. Manage Participant Status (Booked / Completed / Cancelled) ─────────────
+# ── 5. Manage Participant Status ──────────────────────────────────────────────
 @staff_bp.route("/treks/<int:trek_id>/participants/<int:booking_id>/status", methods=["POST"])
-@jwt_required()
-@role_required("staff")
+@staff_required
 def update_participant_status(trek_id, booking_id):
-    staff = get_current_staff()
-    if not staff:
+    staff_member = get_current_staff()
+    if not staff_member:
         return jsonify({"message": "Staff profile not found"}), 404
 
-    trek = Trek.query.get_or_404(trek_id)
-    if trek.staff_id != staff.id:
+    trek = Treks.query.get_or_404(trek_id)
+    if trek.staff_id != staff_member.id:
         return jsonify({"message": "Forbidden: You are not assigned to manage this trek"}), 403
 
-    booking = Booking.query.filter_by(id=booking_id, trek_id=trek.id).first_or_404()
+    booking = Bookings.query.filter_by(id=booking_id, trek_id=trek.id).first_or_404()
     data = request.get_json() or {}
     new_status = data.get("status")
 
     if new_status not in ["Booked", "Completed", "Cancelled", "Pending"]:
         return jsonify({"message": "Invalid status"}), 400
 
-    # Adjust available slots if booking is cancelled
     if new_status == "Cancelled" and booking.status != "Cancelled":
         trek.available_slots += 1
     elif booking.status == "Cancelled" and new_status in ["Booked", "Pending"]:
@@ -197,34 +216,30 @@ def update_participant_status(trek_id, booking_id):
     }), 200
 
 
-# ── 6. Staff Profile ──────────────────────────────────────────────────────────
-@staff_bp.route("/profile", methods=["GET"])
-@jwt_required()
-@role_required("staff")
-def get_profile():
-    staff = get_current_staff()
-    if not staff:
-        return jsonify({"message": "Staff profile not found"}), 404
-    return jsonify(staff.to_dict()), 200
-
-
-@staff_bp.route("/profile", methods=["PUT"])
-@jwt_required()
-@role_required("staff")
-def update_profile():
-    staff = get_current_staff()
-    if not staff:
+# ── 6. Staff Profile (MAD 1: profile) ──────────────────────────────────────────
+@staff_bp.route("/profile", methods=["GET", "POST", "PUT"])
+@staff_required
+def profile():
+    staff_member = get_current_staff()
+    if not staff_member:
         return jsonify({"message": "Staff profile not found"}), 404
 
-    data = request.get_json() or {}
-    if "name" in data:
-        staff.name = data["name"].strip()
-        if staff.user:
-            staff.user.name = data["name"].strip()
-    if "phone_number" in data:
-        staff.phone_number = data["phone_number"].strip()
-    if "specialization" in data:
-        staff.specialization = data["specialization"].strip()
+    if request.method in ["POST", "PUT"]:
+        data = request.get_json() or {}
+        if "name" in data:
+            staff_member.name = data["name"].strip()
+            if staff_member.user:
+                staff_member.user.name = data["name"].strip()
+        if "phone_number" in data:
+            staff_member.phone_number = data["phone_number"].strip()
+        if "specialization" in data:
+            staff_member.specialization = data["specialization"].strip()
 
-    db.session.commit()
-    return jsonify({"message": "Profile updated successfully", "staff": staff.to_dict()}), 200
+        db.session.commit()
+        return jsonify({"message": "Profile updated successfully", "staff": staff_member.to_dict()}), 200
+
+    return jsonify(staff_member.to_dict()), 200
+
+# Aliases for backwards compatibility
+get_profile = profile
+update_profile = profile

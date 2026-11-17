@@ -1,31 +1,39 @@
+from functools import wraps
 from flask import request, jsonify
 from flask_jwt_extended import jwt_required, current_user
-from werkzeug.security import generate_password_hash
 from role_required import role_required
-from models.db_models import db, User, Trek, Booking
+from models.models import db, Users, Treks, Staff, Bookings, User, Trek, StaffProfile, Booking
 from cache import cache
 from . import user_bp
 
 
-# ── 1. User Dashboard ─────────────────────────────────────────────────────────
+# ── User Required Decorator (MAD 1: user_required) ────────────────────────────
+def user_required(f):
+    @wraps(f)
+    @jwt_required()
+    @role_required("user")
+    def decorated(*args, **kwargs):
+        return f(*args, **kwargs)
+    return decorated
+
+
+# ── 1. User Dashboard (MAD 1: dashboard) ──────────────────────────────────────
 @user_bp.route("/dashboard", methods=["GET"])
-@jwt_required()
-@role_required("user")
+@user_required
 def dashboard():
-    user_bookings = Booking.query.filter_by(user_id=current_user.id).order_by(Booking.booking_date.desc()).all()
+    total_bookings = Bookings.query.filter_by(user_id=current_user.id).count()
+    confirmed_bookings = Bookings.query.filter_by(user_id=current_user.id).filter(
+        Bookings.status.in_(["Booked", "Confirmed"])
+    ).count()
+    completed_bookings = Bookings.query.filter_by(user_id=current_user.id, status="Completed").count()
+    cancelled_bookings = Bookings.query.filter_by(user_id=current_user.id, status="Cancelled").count()
+    pending_bookings = Bookings.query.filter_by(user_id=current_user.id, status="Pending").count()
 
-    total_bookings = len(user_bookings)
-    confirmed_bookings = sum(1 for b in user_bookings if b.status in ["Booked", "Confirmed"])
-    pending_bookings = sum(1 for b in user_bookings if b.status == "Pending")
-    completed_bookings = sum(1 for b in user_bookings if b.status == "Completed")
-    cancelled_bookings = sum(1 for b in user_bookings if b.status == "Cancelled")
-
-    easy = 0
-    moderate = 0
-    hard = 0
-    for b in user_bookings:
+    all_user_bookings = Bookings.query.filter_by(user_id=current_user.id).all()
+    easy, moderate, hard = 0, 0, 0
+    for b in all_user_bookings:
         if b.trek and b.trek.difficulty:
-            diff = b.trek.difficulty.strip().lower()
+            diff = b.trek.difficulty.lower()
             if diff == "easy":
                 easy += 1
             elif diff == "moderate":
@@ -33,67 +41,66 @@ def dashboard():
             elif diff == "hard":
                 hard += 1
 
-    diff_labels = ["Easy", "Moderate", "Hard"]
-    diff_counts = [easy, moderate, hard]
-
-    recent_bookings = [b.to_dict() for b in user_bookings[:5]]
+    recent = Bookings.query.filter_by(user_id=current_user.id).order_by(Bookings.booking_date.desc()).limit(5).all()
+    recent_bookings = [b.to_dict() for b in recent]
 
     return jsonify({
         "stats": {
             "total_bookings": total_bookings,
             "confirmed_bookings": confirmed_bookings,
-            "pending_bookings": pending_bookings,
             "completed_bookings": completed_bookings,
             "cancelled_bookings": cancelled_bookings,
-            "diff_labels": diff_labels,
-            "diff_counts": diff_counts
+            "pending_bookings": pending_bookings,
+            "diff_labels": ["Easy", "Moderate", "Hard"],
+            "diff_counts": [easy, moderate, hard]
         },
         "recent_bookings": recent_bookings,
         "user_name": current_user.name
     }), 200
 
 
-# ── 2. Browse Treks ───────────────────────────────────────────────────────────
+# ── 2. Browse Treks (MAD 1: browse) ───────────────────────────────────────────
+@user_bp.route("/browse", methods=["GET"])
 @user_bp.route("/treks", methods=["GET"])
-@jwt_required()
-@role_required("user")
-def browse_treks():
-    search = request.args.get("search", "").strip()
+@user_required
+def browse():
+    search = (request.args.get("search") or request.args.get("search_word") or "").strip()
     location = request.args.get("location", "").strip()
     difficulty = request.args.get("difficulty", "all").strip().lower()
 
-    query = Trek.query.filter(Trek.status == "Open")
+    query = Treks.query.filter(Treks.status == "Open")
 
     if search:
-        query = query.filter(Trek.name.ilike(f"%{search}%"))
+        query = query.filter(Treks.name.ilike(f"%{search}%"))
     if location:
-        query = query.filter(Trek.location.ilike(f"%{location}%"))
+        query = query.filter(Treks.location.ilike(f"%{location}%"))
     if difficulty and difficulty != "all":
-        query = query.filter(Trek.difficulty.ilike(f"%{difficulty}%"))
+        query = query.filter(Treks.difficulty.ilike(f"%{difficulty}%"))
 
-    treks = query.order_by(Trek.start_date.asc()).all()
+    open_treks = query.order_by(Treks.start_date.asc()).all()
 
-    # Get set of trek IDs currently booked by this user to indicate booking state
     active_booked_trek_ids = [
-        b.trek_id for b in Booking.query.filter_by(user_id=current_user.id)
-        .filter(Booking.status.in_(["Booked", "Confirmed", "Pending"])).all()
+        b.trek_id for b in Bookings.query.filter_by(user_id=current_user.id)
+        .filter(Bookings.status.in_(["Booked", "Confirmed", "Pending"])).all()
     ]
 
     trek_list = []
-    for t in treks:
+    for t in open_treks:
         d = t.to_dict()
         d["is_booked_by_user"] = t.id in active_booked_trek_ids
         trek_list.append(d)
 
     return jsonify({"treks": trek_list}), 200
 
+# Alias for backwards compatibility
+browse_treks = browse
 
-# ── 3. Book Trek ──────────────────────────────────────────────────────────────
+
+# ── 3. Book Trek (MAD 1: book_trek) ───────────────────────────────────────────
 @user_bp.route("/book/<int:trek_id>", methods=["POST"])
-@jwt_required()
-@role_required("user")
+@user_required
 def book_trek(trek_id):
-    trek = Trek.query.get(trek_id)
+    trek = Treks.query.get(trek_id)
     if not trek:
         return jsonify({"message": "Trek not found"}), 404
 
@@ -103,13 +110,12 @@ def book_trek(trek_id):
     if trek.available_slots <= 0:
         return jsonify({"message": "No slots available for this trek"}), 400
 
-    existing_booking = Booking.query.filter_by(user_id=current_user.id, trek_id=trek_id).first()
+    existing_booking = Bookings.query.filter_by(user_id=current_user.id, trek_id=trek_id).first()
 
     if existing_booking:
         if existing_booking.status in ["Booked", "Confirmed", "Pending"]:
             return jsonify({"message": "You have already booked this trek"}), 409
         elif existing_booking.status == "Cancelled":
-            # Re-activate booking
             existing_booking.status = "Booked"
             trek.available_slots -= 1
             db.session.commit()
@@ -119,8 +125,7 @@ def book_trek(trek_id):
                 "booking": existing_booking.to_dict()
             }), 200
 
-    # Create new booking
-    booking = Booking(user_id=current_user.id, trek_id=trek.id, status="Booked")
+    booking = Bookings(user_id=current_user.id, trek_id=trek.id, status="Booked")
     trek.available_slots -= 1
     db.session.add(booking)
     db.session.commit()
@@ -152,26 +157,27 @@ def serialize_booking_with_tracking(b):
     return d
 
 
-# ── 4. My Bookings ────────────────────────────────────────────────────────────
+# ── 4. My Bookings (MAD 1: bookings) ──────────────────────────────────────────
 @user_bp.route("/bookings", methods=["GET"])
-@jwt_required()
-@role_required("user")
-def get_user_bookings():
+@user_required
+def bookings():
     status_filter = request.args.get("status", "all").strip()
-    query = Booking.query.filter_by(user_id=current_user.id)
+    query = Bookings.query.filter_by(user_id=current_user.id)
 
     if status_filter and status_filter.lower() != "all":
-        query = query.filter(Booking.status.ilike(status_filter))
+        query = query.filter(Bookings.status.ilike(status_filter))
 
-    bookings = query.order_by(Booking.booking_date.desc()).all()
-    return jsonify({"bookings": [serialize_booking_with_tracking(b) for b in bookings]}), 200
+    user_bookings = query.order_by(Bookings.booking_date.desc()).all()
+    return jsonify({"bookings": [serialize_booking_with_tracking(b) for b in user_bookings]}), 200
+
+# Alias for backwards compatibility
+get_user_bookings = bookings
 
 
 @user_bp.route("/bookings/<int:booking_id>", methods=["GET"])
-@jwt_required()
-@role_required("user")
+@user_required
 def get_booking_detail(booking_id):
-    booking = Booking.query.get(booking_id)
+    booking = Bookings.query.get(booking_id)
     if not booking:
         return jsonify({"message": "Booking not found"}), 404
 
@@ -181,12 +187,12 @@ def get_booking_detail(booking_id):
     return jsonify({"booking": serialize_booking_with_tracking(booking)}), 200
 
 
-# ── 5. Cancel Booking ─────────────────────────────────────────────────────────
+# ── 5. Cancel Booking (MAD 1: cancel_booking) ─────────────────────────────────
 @user_bp.route("/bookings/<int:booking_id>/cancel", methods=["POST"])
-@jwt_required()
-@role_required("user")
+@user_bp.route("/bookings/cancel/<int:booking_id>", methods=["POST"])
+@user_required
 def cancel_booking(booking_id):
-    booking = Booking.query.get(booking_id)
+    booking = Bookings.query.get(booking_id)
     if not booking:
         return jsonify({"message": "Booking not found"}), 404
 
@@ -205,17 +211,18 @@ def cancel_booking(booking_id):
 
     db.session.commit()
     cache.clear()
+
     return jsonify({
         "message": "Booking cancelled successfully",
         "booking": serialize_booking_with_tracking(booking)
     }), 200
 
 
+# ── 6. Payment Simulation (Enhancement 2) ─────────────────────────────────────
 @user_bp.route("/bookings/<int:booking_id>/pay", methods=["POST"])
-@jwt_required()
-@role_required("user")
+@user_required
 def simulate_payment(booking_id):
-    booking = Booking.query.get(booking_id)
+    booking = Bookings.query.get(booking_id)
     if not booking:
         return jsonify({"message": "Booking not found"}), 404
 
@@ -241,92 +248,98 @@ def simulate_payment(booking_id):
     }), 200
 
 
-# ── 6. Trekking History ───────────────────────────────────────────────────────
+# ── 7. Trekking History (MAD 1: history) ───────────────────────────────────────
 @user_bp.route("/history", methods=["GET"])
-@jwt_required()
-@role_required("user")
+@user_required
 def history():
-    # Only non-cancelled bookings where either booking is Completed or trek is Completed
-    bookings = (
-        Booking.query.join(Trek)
+    history_bookings = (
+        Bookings.query
+        .join(Treks)
+        .filter(Bookings.user_id == current_user.id)
         .filter(
-            Booking.user_id == current_user.id,
-            Booking.status != "Cancelled",
-            (Booking.status == "Completed") | (Trek.status == "Completed")
+            (Bookings.status == "Completed") |
+            (Treks.status == "Completed")
         )
-        .order_by(Booking.booking_date.desc())
+        .order_by(Bookings.booking_date.desc())
         .all()
     )
 
-    total_completed = len(bookings)
-    total_days = sum(b.trek.duration for b in bookings if b.trek and b.trek.duration)
-    total_spent = sum(b.trek.price for b in bookings if b.trek and b.trek.price)
+    records = []
+    total_kms = 0
+    total_days = 0
+
+    for b in history_bookings:
+        t = b.trek
+        d_val = t.duration if (t and t.duration) else 0
+        est_km = d_val * 12
+        total_days += d_val
+        total_kms += est_km
+
+        records.append({
+            "id": b.id,
+            "booking_id": b.id,
+            "trek_id": b.trek_id,
+            "trek_name": t.name if t else "Unknown",
+            "location": t.location if t else "N/A",
+            "difficulty": t.difficulty if t else "Moderate",
+            "duration": d_val,
+            "estimated_km": est_km,
+            "completion_date": t.end_date.strftime("%Y-%m-%d") if (t and t.end_date) else (b.booking_date.strftime("%Y-%m-%d") if b.booking_date else "N/A"),
+            "staff_name": t.assigned_staff.name if (t and t.assigned_staff) else "Unassigned",
+            "payment_status": b.payment_status,
+            "status": "Completed"
+        })
 
     return jsonify({
-        "history": [serialize_booking_with_tracking(b) for b in bookings],
+        "history": records,
         "summary": {
-            "total_completed": total_completed,
-            "total_days": total_days,
-            "total_spent": total_spent
+            "total_completed": len(records),
+            "total_days_trekked": total_days,
+            "estimated_distance_km": total_kms
         }
     }), 200
 
 
-# ── 7. Profile Management ─────────────────────────────────────────────────────
-@user_bp.route("/profile", methods=["GET"])
-@jwt_required()
-@role_required("user")
-def get_profile():
-    return jsonify({
-        "user": {
-            "id": current_user.id,
-            "name": current_user.name,
-            "email": current_user.email,
-            "role": current_user.role,
-            "created_at": current_user.created_at.strftime("%Y-%m-%d %H:%M") if current_user.created_at else None
-        }
-    }), 200
+# ── 8. Profile Management (MAD 1: profile) ────────────────────────────────────
+@user_bp.route("/profile", methods=["GET", "POST", "PUT"])
+@user_required
+def profile():
+    if request.method in ["POST", "PUT"]:
+        data = request.get_json() or {}
+        name = data.get("name", "").strip()
+        email = data.get("email", "").strip()
+
+        if email and email != current_user.email:
+            existing = Users.query.filter_by(email=email).first()
+            if existing and existing.id != current_user.id:
+                return jsonify({"message": "Email is already taken"}), 409
+            current_user.email = email
+
+        if name:
+            current_user.name = name
+
+        db.session.commit()
+        return jsonify({
+            "message": "Profile updated successfully",
+            "user": current_user.to_dict()
+        }), 200
+
+    total_bookings = Bookings.query.filter_by(user_id=current_user.id).count()
+    completed = Bookings.query.filter_by(user_id=current_user.id, status="Completed").count()
+
+    d = current_user.to_dict()
+    d["total_bookings"] = total_bookings
+    d["completed_treks"] = completed
+    return jsonify({"user": d}), 200
+
+# Aliases for backwards compatibility
+get_profile = profile
+update_profile = profile
 
 
-@user_bp.route("/profile", methods=["PUT"])
-@jwt_required()
-@role_required("user")
-def update_profile():
-    data = request.get_json() or {}
-    name = data.get("name", "").strip()
-    email = data.get("email", "").strip()
-    password = data.get("password", "")
-
-    if not name or not email:
-        return jsonify({"message": "Name and email are required"}), 400
-
-    existing_user = User.query.filter_by(email=email).first()
-    if existing_user and existing_user.id != current_user.id:
-        return jsonify({"message": "Email is already taken by another account"}), 400
-
-    current_user.name = name
-    current_user.email = email
-    if password:
-        if len(password) < 6:
-            return jsonify({"message": "Password must be at least 6 characters"}), 400
-        current_user.password = generate_password_hash(password)
-
-    db.session.commit()
-    return jsonify({
-        "message": "Profile updated successfully",
-        "user": {
-            "id": current_user.id,
-            "name": current_user.name,
-            "email": current_user.email,
-            "role": current_user.role
-        }
-    }), 200
-
-
-# ── 8. User-Triggered CSV Export for Trekking History ─────────────────────────
+# ── 9. Celery CSV Export (Milestone 7) ─────────────────────────────────────────
 @user_bp.route("/export/csv", methods=["POST"])
-@jwt_required()
-@role_required("user")
+@user_required
 def trigger_csv_export():
     try:
         from task import download_csv
@@ -335,8 +348,7 @@ def trigger_csv_export():
             "message": "CSV export initiated in background",
             "task_id": task.id
         }), 202
-    except Exception as e:
-        # Fallback to direct synchronous execution if Celery worker is offline
+    except Exception:
         from task import download_csv
         filename = download_csv(current_user.id)
         return jsonify({
@@ -347,8 +359,7 @@ def trigger_csv_export():
 
 
 @user_bp.route("/export/status/<task_id>", methods=["GET"])
-@jwt_required()
-@role_required("user")
+@user_required
 def check_export_status(task_id):
     try:
         from celery.result import AsyncResult
@@ -366,4 +377,3 @@ def check_export_status(task_id):
             return jsonify({"status": res.state}), 202
     except Exception as e:
         return jsonify({"status": "ERROR", "message": str(e)}), 500
-
