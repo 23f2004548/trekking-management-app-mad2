@@ -51,6 +51,59 @@ function viewCertificate(item) {
     showCertModal.value = true
 }
 
+const exporting = ref(false)
+const exportMsg = ref("")
+
+async function exportCSV() {
+    exporting.value = true
+    exportMsg.value = "Initiating export..."
+    error.value = ""
+    try {
+        const res = await axios.post(`${BASE_URL}/user/export/csv`, {}, {
+            headers: { Authorization: "Bearer " + token }
+        })
+
+        if (res.data.download_url) {
+            exportMsg.value = "Export ready! Downloading..."
+            window.location.href = `${BASE_URL}${res.data.download_url}`
+            setTimeout(() => { exporting.value = false; exportMsg.value = "" }, 2000)
+        } else if (res.data.task_id) {
+            exportMsg.value = "Processing in background via Celery..."
+            pollExportStatus(res.data.task_id)
+        }
+    } catch (err) {
+        error.value = err.response?.data?.message || "Failed to export CSV"
+        exporting.value = false
+        exportMsg.value = ""
+    }
+}
+
+async function pollExportStatus(taskId) {
+    const interval = setInterval(async () => {
+        try {
+            const statusRes = await axios.get(`${BASE_URL}/user/export/status/${taskId}`, {
+                headers: { Authorization: "Bearer " + token }
+            })
+            if (statusRes.data.status === "SUCCESS") {
+                clearInterval(interval)
+                exportMsg.value = "Export complete! Downloading..."
+                window.location.href = `${BASE_URL}${statusRes.data.download_url}`
+                setTimeout(() => { exporting.value = false; exportMsg.value = "" }, 2000)
+            } else if (statusRes.data.status === "FAILURE") {
+                clearInterval(interval)
+                error.value = "Background CSV export failed"
+                exporting.value = false
+                exportMsg.value = ""
+            }
+        } catch (e) {
+            clearInterval(interval)
+            error.value = "Failed to poll export status"
+            exporting.value = false
+            exportMsg.value = ""
+        }
+    }, 1500)
+}
+
 onMounted(() => {
     fetchHistory()
 })
@@ -60,9 +113,20 @@ onMounted(() => {
     <div>
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h4 class="fw-bold mb-0">Trekking History</h4>
-            <button class="btn btn-primary btn-sm" @click="router.push('/user/browse')">
-                <i class="bi bi-compass me-1"></i>Find Next Trek
-            </button>
+            <div class="d-flex gap-2">
+                <button
+                    class="btn btn-outline-success btn-sm"
+                    @click="exportCSV"
+                    :disabled="exporting"
+                >
+                    <span v-if="exporting" class="spinner-border spinner-border-sm me-1"></span>
+                    <i v-else class="bi bi-file-earmark-spreadsheet me-1"></i>
+                    {{ exporting ? exportMsg : 'Export CSV' }}
+                </button>
+                <button class="btn btn-primary btn-sm" @click="router.push('/user/browse')">
+                    <i class="bi bi-compass me-1"></i>Find Next Trek
+                </button>
+            </div>
         </div>
 
         <div v-if="error" class="alert alert-danger" role="alert">

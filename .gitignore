@@ -10,3 +10,8 @@ __pycache__/
 instance/
 *.sqlite3
 *.db
+backend/static/exports/*
+!backend/static/exports/.gitkeep
+backend/static/reports/*
+!backend/static/reports/.gitkeep
+celerybeat-schedule*

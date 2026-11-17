@@ -389,3 +389,64 @@ def reports():
         },
         "popular_treks": popular_treks[:5]
     }), 200
+
+
+# ── 8. Celery Batch Jobs (Milestone 7) ─────────────────────────────────────────
+@admin_bp.route("/jobs/monthly-report", methods=["POST"])
+@jwt_required()
+@role_required("admin")
+def trigger_monthly_report():
+    try:
+        from task import monthly_report
+        task = monthly_report.delay()
+        return jsonify({
+            "message": "Monthly activity report generation initiated in background",
+            "task_id": task.id
+        }), 202
+    except Exception:
+        from task import monthly_report
+        result = monthly_report()
+        return jsonify({
+            "message": "Monthly activity report generated successfully",
+            "filename": result,
+            "report_url": f"/reports/file/{result}"
+        }), 200
+
+
+@admin_bp.route("/jobs/daily-reminders", methods=["POST"])
+@jwt_required()
+@role_required("admin")
+def trigger_daily_reminders():
+    try:
+        from task import daily_reminders
+        task = daily_reminders.delay()
+        return jsonify({
+            "message": "Daily trek reminders initiated in background",
+            "task_id": task.id
+        }), 202
+    except Exception:
+        from task import daily_reminders
+        result = daily_reminders()
+        return jsonify({
+            "message": "Daily trek reminders dispatched successfully",
+            "result": result
+        }), 200
+
+
+@admin_bp.route("/reports/files", methods=["GET"])
+@jwt_required()
+@role_required("admin")
+def list_generated_reports():
+    import os
+    backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    reports_folder = os.path.join(backend_dir, "static", "reports")
+    files = []
+    if os.path.exists(reports_folder):
+        for f in os.listdir(reports_folder):
+            if f.endswith(".html"):
+                files.append({
+                    "filename": f,
+                    "url": f"/reports/file/{f}"
+                })
+    return jsonify({"reports": files}), 200
+

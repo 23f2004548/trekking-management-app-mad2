@@ -287,3 +287,49 @@ def update_profile():
             "role": current_user.role
         }
     }), 200
+
+
+# ── 8. User-Triggered CSV Export for Trekking History ─────────────────────────
+@user_bp.route("/export/csv", methods=["POST"])
+@jwt_required()
+@role_required("user")
+def trigger_csv_export():
+    try:
+        from task import download_csv
+        task = download_csv.delay(current_user.id)
+        return jsonify({
+            "message": "CSV export initiated in background",
+            "task_id": task.id
+        }), 202
+    except Exception as e:
+        # Fallback to direct synchronous execution if Celery worker is offline
+        from task import download_csv
+        filename = download_csv(current_user.id)
+        return jsonify({
+            "message": "CSV export generated successfully",
+            "filename": filename,
+            "download_url": f"/exports/{filename}"
+        }), 200
+
+
+@user_bp.route("/export/status/<task_id>", methods=["GET"])
+@jwt_required()
+@role_required("user")
+def check_export_status(task_id):
+    try:
+        from celery.result import AsyncResult
+        res = AsyncResult(task_id)
+        if res.state == "SUCCESS":
+            filename = res.result
+            return jsonify({
+                "status": "SUCCESS",
+                "filename": filename,
+                "download_url": f"/exports/{filename}"
+            }), 200
+        elif res.state == "FAILURE":
+            return jsonify({"status": "FAILURE", "error": str(res.info)}), 500
+        else:
+            return jsonify({"status": res.state}), 202
+    except Exception as e:
+        return jsonify({"status": "ERROR", "message": str(e)}), 500
+
