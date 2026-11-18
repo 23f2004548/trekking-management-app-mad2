@@ -23,7 +23,7 @@ const form = ref({
     duration: 3,
     total_slots: 15,
     available_slots: 15,
-    status: "Open",
+    status: "upcoming",
     start_date: "",
     end_date: "",
     staff_id: "",
@@ -63,7 +63,7 @@ function openAddModal() {
         duration: 3,
         total_slots: 15,
         available_slots: 15,
-        status: "Open",
+        status: "upcoming",
         start_date: "",
         end_date: "",
         staff_id: "",
@@ -183,7 +183,7 @@ onMounted(() => {
                             <td>₹{{ t.price }}</td>
                             <td>{{ t.staff_name }}</td>
                             <td>
-                                <span class="badge" :class="t.status === 'Open' ? 'bg-success' : 'bg-warning text-dark'">
+                                <span class="badge text-capitalize" :class="t.status === 'upcoming' ? 'bg-primary' : (t.status === 'ongoing' ? 'bg-warning text-dark' : 'bg-success')">
                                     {{ t.status }}
                                 </span>
                             </td>
@@ -246,11 +246,9 @@ onMounted(() => {
                                 <div class="col-md-4">
                                     <label class="form-label fw-semibold">Status</label>
                                     <select v-model="form.status" class="form-select">
-                                        <option>Pending</option>
-                                        <option>Approved</option>
-                                        <option>Open</option>
-                                        <option>Closed</option>
-                                        <option>Completed</option>
+                                        <option value="upcoming">upcoming</option>
+                                        <option value="ongoing">ongoing</option>
+                                        <option value="completed">completed</option>
                                     </select>
                                 </div>
                                 <div class="col-md-6">

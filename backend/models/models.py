@@ -55,7 +55,7 @@ class Staff(BaseModel):
     email = db.Column(db.String(100), nullable=False)
     phone_number = db.Column(db.String(20), nullable=False, default="N/A")
     specialization = db.Column(db.String(100))
-    status = db.Column(db.String(20), default="active")  # active, blacklisted, pending, approved
+    status = db.Column(db.String(20), default="pending")  # pending, approved, blacklisted
 
     @property
     def role(self):
@@ -89,7 +89,7 @@ class Treks(BaseModel):
     duration = db.Column(db.Integer, nullable=False)  # Duration in days
     total_slots = db.Column(db.Integer, nullable=False)
     available_slots = db.Column(db.Integer, nullable=False)
-    status = db.Column(db.String(20), nullable=False, default="Open")  # Open, Closed, Started, Ongoing, Completed
+    status = db.Column(db.String(20), nullable=False, default="upcoming")  # upcoming, ongoing, completed
     start_date = db.Column(db.Date, nullable=False)
     end_date = db.Column(db.Date, nullable=False)
     description = db.Column(db.Text)
@@ -125,7 +125,7 @@ class Bookings(BaseModel):
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     trek_id = db.Column(db.Integer, db.ForeignKey("trek.id"), nullable=False)
     booking_date = db.Column(db.DateTime, default=datetime.utcnow)
-    status = db.Column(db.String(20), nullable=False, default="Booked")  # Pending, Booked, Cancelled, Completed
+    status = db.Column(db.String(20), nullable=False, default="confirmed")  # pending, confirmed, cancelled
     payment_status = db.Column(db.String(20), nullable=False, default="Pending")  # Pending, Paid, Refunded
 
     def to_dict(self):

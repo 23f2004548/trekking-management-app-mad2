@@ -28,18 +28,18 @@ def dashboard():
     total_users = Users.query.filter_by(role="user").count()
     total_staff = Staff.query.count()
     total_bookings = Bookings.query.count()
-    open_treks = Treks.query.filter_by(status="Open").count()
-    active_bookings = Bookings.query.filter_by(status="Booked").count()
+    upcoming_treks = Treks.query.filter(Treks.status.ilike("upcoming")).count()
+    confirmed_bookings = Bookings.query.filter(Bookings.status.ilike("confirmed")).count()
     blocked_users = Users.query.filter_by(is_active=False).count()
-    blacklisted_staff = Staff.query.filter_by(status="blacklisted").count()
+    blacklisted_staff = Staff.query.filter(Staff.status.ilike("blacklisted")).count()
 
     return jsonify({
         "total_treks": total_treks,
         "total_users": total_users,
         "total_staff": total_staff,
         "total_bookings": total_bookings,
-        "open_treks": open_treks,
-        "active_bookings": active_bookings,
+        "open_treks": upcoming_treks,
+        "active_bookings": confirmed_bookings,
         "blocked_users": blocked_users,
         "blacklisted_staff": blacklisted_staff
     }), 200
@@ -59,6 +59,9 @@ def treks():
 def add_trek():
     data = request.get_json() or {}
     try:
+        raw_status = data.get("status", "upcoming").strip().lower()
+        valid_status = raw_status if raw_status in ["upcoming", "ongoing", "completed"] else "upcoming"
+
         trek = Treks(
             name=data["name"].strip(),
             location=data["location"].strip(),
@@ -66,7 +69,7 @@ def add_trek():
             duration=int(data["duration"]),
             total_slots=int(data["total_slots"]),
             available_slots=int(data.get("available_slots", data["total_slots"])),
-            status=data.get("status", "Pending"),
+            status=valid_status,
             start_date=datetime.strptime(data["start_date"], "%Y-%m-%d").date(),
             end_date=datetime.strptime(data["end_date"], "%Y-%m-%d").date(),
             staff_id=int(data["staff_id"]) if data.get("staff_id") else None,
@@ -95,11 +98,9 @@ def edit_trek(trek_id):
         if "total_slots" in data: trek.total_slots = int(data["total_slots"])
         if "available_slots" in data: trek.available_slots = int(data["available_slots"])
         if "status" in data:
-            trek.status = data["status"]
-            if trek.status == "Completed":
-                active_bookings = Bookings.query.filter_by(trek_id=trek.id).filter(Bookings.status.in_(["Booked", "Confirmed"])).all()
-                for b in active_bookings:
-                    b.status = "Completed"
+            st = data["status"].strip().lower()
+            if st in ["upcoming", "ongoing", "completed"]:
+                trek.status = st
         if "description" in data: trek.description = data["description"]
         if "price" in data: trek.price = float(data["price"])
         if "staff_id" in data:
@@ -135,7 +136,7 @@ def staff():
     status = request.args.get("status")
     query = Staff.query
     if status:
-        query = query.filter_by(status=status)
+        query = query.filter(Staff.status.ilike(status))
     staff_list = query.order_by(Staff.created_at.desc()).all()
     return jsonify([s.to_dict() for s in staff_list]), 200
 
@@ -177,7 +178,7 @@ def add_staff():
         email=email,
         phone_number=phone_number,
         specialization=specialization,
-        status="active"
+        status="approved"
     )
     db.session.add(profile)
     db.session.commit()
@@ -191,23 +192,23 @@ def add_staff():
 def change_staff_status(staff_id):
     staff_member = Staff.query.get_or_404(staff_id)
     data = request.get_json(silent=True) or {}
-    new_status = data.get("status")
+    new_status = data.get("status", "").lower()
 
-    if new_status:
+    if new_status in ["pending", "approved", "blacklisted"]:
         staff_member.status = new_status
         if staff_member.user:
-            staff_member.user.is_active = (new_status.lower() in ["active", "approved"])
+            staff_member.user.is_active = (new_status == "approved")
     else:
-        if staff_member.status == "pending":
-            staff_member.status = "active"
+        if staff_member.status.lower() == "pending":
+            staff_member.status = "approved"
             if staff_member.user:
                 staff_member.user.is_active = True
-        elif staff_member.status == "active":
+        elif staff_member.status.lower() == "approved":
             staff_member.status = "blacklisted"
             if staff_member.user:
                 staff_member.user.is_active = False
         else:
-            staff_member.status = "active"
+            staff_member.status = "approved"
             if staff_member.user:
                 staff_member.user.is_active = True
 
@@ -273,14 +274,14 @@ def delete_user(user_id):
 @admin_bp.route("/bookings", methods=["GET"])
 @admin_required
 def bookings():
-    status = request.args.get("status", "all").strip()
+    status = request.args.get("status", "all").strip().lower()
     trek_id = request.args.get("trek_id")
     user_id = request.args.get("user_id")
     search_term = request.args.get("search", "").strip()
 
     query = Bookings.query.join(Treks).join(Users)
 
-    if status and status.lower() != "all":
+    if status and status != "all":
         query = query.filter(Bookings.status.ilike(status))
     if trek_id:
         query = query.filter(Bookings.trek_id == int(trek_id))
@@ -302,14 +303,14 @@ def bookings():
 def change_booking_status(booking_id):
     booking = Bookings.query.get_or_404(booking_id)
     data = request.get_json() or {}
-    new_status = data.get("status", "").capitalize()
+    new_status = data.get("status", "").strip().lower()
 
-    if new_status not in ["Pending", "Booked", "Confirmed", "Cancelled", "Completed"]:
-        return jsonify({"message": "Invalid booking status"}), 400
+    if new_status not in ["pending", "confirmed", "cancelled"]:
+        return jsonify({"message": "Invalid booking status. Must be pending, confirmed, or cancelled"}), 400
 
-    if new_status == "Cancelled" and booking.status != "Cancelled":
+    if new_status == "cancelled" and booking.status.lower() != "cancelled":
         booking.trek.available_slots += 1
-    elif booking.status == "Cancelled" and new_status in ["Booked", "Pending", "Confirmed"]:
+    elif booking.status.lower() == "cancelled" and new_status in ["confirmed", "pending"]:
         if booking.trek.available_slots > 0:
             booking.trek.available_slots -= 1
         else:
@@ -366,15 +367,15 @@ def reports():
     total_treks = Treks.query.count()
     total_bookings = Bookings.query.count()
     active_users = Users.query.filter_by(role="user", is_active=True).count()
-    completed_treks = Treks.query.filter_by(status="Completed").count()
+    completed_treks = Treks.query.filter(Treks.status.ilike("completed")).count()
 
-    booked_count = Bookings.query.filter_by(status="Booked").count()
-    cancelled_count = Bookings.query.filter_by(status="Cancelled").count()
-    completed_booking_count = Bookings.query.filter_by(status="Completed").count()
+    confirmed_count = Bookings.query.filter(Bookings.status.ilike("confirmed")).count()
+    cancelled_count = Bookings.query.filter(Bookings.status.ilike("cancelled")).count()
+    pending_count = Bookings.query.filter(Bookings.status.ilike("pending")).count()
 
-    easy_count = Treks.query.filter(Treks.difficulty.ilike("easy")).count()
-    moderate_count = Treks.query.filter(Treks.difficulty.ilike("moderate")).count()
-    hard_count = Treks.query.filter(Treks.difficulty.ilike("hard")).count()
+    easy_count = Treks.query.filter(Treks.difficulty.ilike("easy"), Treks.status.ilike("upcoming")).count()
+    moderate_count = Treks.query.filter(Treks.difficulty.ilike("moderate"), Treks.status.ilike("upcoming")).count()
+    hard_count = Treks.query.filter(Treks.difficulty.ilike("hard"), Treks.status.ilike("upcoming")).count()
 
     all_treks = Treks.query.all()
     popular_treks = []
@@ -396,9 +397,10 @@ def reports():
         "active_users": active_users,
         "completed_treks": completed_treks,
         "booking_stats": {
-            "booked": booked_count,
+            "booked": confirmed_count,
             "cancelled": cancelled_count,
-            "completed": completed_booking_count
+            "completed": confirmed_count,
+            "pending": pending_count
         },
         "difficulty_distribution": {
             "Easy": easy_count,

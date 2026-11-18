@@ -68,10 +68,10 @@ onMounted(() => {
                     <StatsCard card_title="Total Bookings" :card_value="stats.total_bookings || 0" icon="bi-bookmark-check" />
                 </div>
                 <div class="col-3">
-                    <StatsCard card_title="Open Treks" :card_value="stats.open_treks || 0" icon="bi-compass" />
+                    <StatsCard card_title="Upcoming Treks" :card_value="stats.open_treks || 0" icon="bi-compass" />
                 </div>
                 <div class="col-3">
-                    <StatsCard card_title="Active Bookings" :card_value="stats.active_bookings || 0" icon="bi-calendar-check" />
+                    <StatsCard card_title="Confirmed Bookings" :card_value="stats.active_bookings || 0" icon="bi-calendar-check" />
                 </div>
                 <div class="col-3">
                     <StatsCard card_title="Blocked Users" :card_value="stats.blocked_users || 0" icon="bi-person-x" />
@@ -109,7 +109,7 @@ onMounted(() => {
                                 <td>{{ t.available_slots }} / {{ t.total_slots }}</td>
                                 <td>{{ t.staff_name }}</td>
                                 <td>
-                                    <span class="badge" :class="t.status === 'Open' ? 'bg-success' : 'bg-warning text-dark'">
+                                    <span class="badge text-capitalize" :class="t.status === 'upcoming' ? 'bg-primary' : (t.status === 'ongoing' ? 'bg-warning text-dark' : 'bg-success')">
                                         {{ t.status }}
                                     </span>
                                 </td>

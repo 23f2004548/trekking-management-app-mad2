@@ -23,11 +23,20 @@ def user_required(f):
 def dashboard():
     total_bookings = Bookings.query.filter_by(user_id=current_user.id).count()
     confirmed_bookings = Bookings.query.filter_by(user_id=current_user.id).filter(
-        Bookings.status.in_(["Booked", "Confirmed"])
+        Bookings.status.ilike("confirmed")
     ).count()
-    completed_bookings = Bookings.query.filter_by(user_id=current_user.id, status="Completed").count()
-    cancelled_bookings = Bookings.query.filter_by(user_id=current_user.id, status="Cancelled").count()
-    pending_bookings = Bookings.query.filter_by(user_id=current_user.id, status="Pending").count()
+    completed_bookings = (
+        Bookings.query.join(Treks)
+        .filter(Bookings.user_id == current_user.id)
+        .filter(Bookings.status.ilike("confirmed"), Treks.status.ilike("completed"))
+        .count()
+    )
+    cancelled_bookings = Bookings.query.filter_by(user_id=current_user.id).filter(
+        Bookings.status.ilike("cancelled")
+    ).count()
+    pending_bookings = Bookings.query.filter_by(user_id=current_user.id).filter(
+        Bookings.status.ilike("pending")
+    ).count()
 
     all_user_bookings = Bookings.query.filter_by(user_id=current_user.id).all()
     easy, moderate, hard = 0, 0, 0
@@ -66,7 +75,7 @@ def browse():
     location = request.args.get("location", "").strip()
     difficulty = request.args.get("difficulty", "all").strip().lower()
 
-    query = Treks.query.filter(Treks.status == "Open")
+    query = Treks.query.filter(Treks.status.ilike("upcoming"))
 
     if search:
         query = query.filter(Treks.name.ilike(f"%{search}%"))
@@ -79,7 +88,7 @@ def browse():
 
     active_booked_trek_ids = [
         b.trek_id for b in Bookings.query.filter_by(user_id=current_user.id)
-        .filter(Bookings.status.in_(["Booked", "Confirmed", "Pending"])).all()
+        .filter(Bookings.status.in_(["confirmed", "pending"])).all()
     ]
 
     trek_list = []
@@ -99,7 +108,7 @@ def book_trek(trek_id):
     if not trek:
         return jsonify({"message": "Trek not found"}), 404
 
-    if trek.status != "Open":
+    if trek.status.lower() != "upcoming":
         return jsonify({"message": f"Trek is currently '{trek.status}' and not open for bookings"}), 400
 
     if trek.available_slots <= 0:
@@ -108,10 +117,10 @@ def book_trek(trek_id):
     existing_booking = Bookings.query.filter_by(user_id=current_user.id, trek_id=trek_id).first()
 
     if existing_booking:
-        if existing_booking.status in ["Booked", "Confirmed", "Pending"]:
+        if existing_booking.status.lower() in ["confirmed", "pending"]:
             return jsonify({"message": "You have already booked this trek"}), 409
-        elif existing_booking.status == "Cancelled":
-            existing_booking.status = "Booked"
+        elif existing_booking.status.lower() == "cancelled":
+            existing_booking.status = "confirmed"
             trek.available_slots -= 1
             db.session.commit()
             cache.clear()
@@ -120,7 +129,7 @@ def book_trek(trek_id):
                 "booking": existing_booking.to_dict()
             }), 200
 
-    booking = Bookings(user_id=current_user.id, trek_id=trek.id, status="Booked")
+    booking = Bookings(user_id=current_user.id, trek_id=trek.id, status="confirmed")
     trek.available_slots -= 1
     db.session.add(booking)
     db.session.commit()
@@ -136,10 +145,10 @@ def book_trek(trek_id):
 @user_bp.route("/bookings", methods=["GET"])
 @user_required
 def bookings():
-    status_filter = request.args.get("status", "all").strip()
+    status_filter = request.args.get("status", "all").strip().lower()
     query = Bookings.query.filter_by(user_id=current_user.id)
 
-    if status_filter and status_filter.lower() != "all":
+    if status_filter and status_filter != "all":
         query = query.filter(Bookings.status.ilike(status_filter))
 
     user_bookings = query.order_by(Bookings.booking_date.desc()).all()
@@ -157,13 +166,13 @@ def cancel_booking(booking_id):
     if booking.user_id != current_user.id:
         return jsonify({"message": "You are not authorized to cancel this booking"}), 403
 
-    if booking.status == "Cancelled":
+    if booking.status.lower() == "cancelled":
         return jsonify({"message": "Booking is already cancelled"}), 400
 
-    if booking.status == "Completed":
+    if booking.trek and booking.trek.status.lower() == "completed":
         return jsonify({"message": "Completed treks cannot be cancelled"}), 400
 
-    booking.status = "Cancelled"
+    booking.status = "cancelled"
     if booking.trek:
         booking.trek.available_slots += 1
 
@@ -185,8 +194,8 @@ def history():
         .join(Treks)
         .filter(Bookings.user_id == current_user.id)
         .filter(
-            (Bookings.status == "Completed") |
-            (Treks.status == "Completed")
+            Bookings.status.ilike("confirmed"),
+            Treks.status.ilike("completed")
         )
         .order_by(Bookings.booking_date.desc())
         .all()
@@ -217,7 +226,7 @@ def history():
             "trek_end_date": t.end_date.strftime("%Y-%m-%d") if (t and t.end_date) else None,
             "completion_date": t.end_date.strftime("%Y-%m-%d") if (t and t.end_date) else (b.booking_date.strftime("%Y-%m-%d") if b.booking_date else "N/A"),
             "staff_name": t.assigned_staff.name if (t and t.assigned_staff) else "Unassigned",
-            "status": "Completed"
+            "status": "completed"
         })
 
     return jsonify({
@@ -255,7 +264,17 @@ def profile():
         }), 200
 
     total_bookings = Bookings.query.filter_by(user_id=current_user.id).count()
-    completed = Bookings.query.filter_by(user_id=current_user.id, status="Completed").count()
+    completed = (
+        Bookings.query.join(Treks)
+        .filter(Bookings.user_id == current_user.id)
+        .filter(Bookings.status.ilike("confirmed"), Treks.status.ilike("completed"))
+        .count()
+    )
+
+    d = current_user.to_dict()
+    d["total_bookings"] = total_bookings
+    d["completed_treks"] = completed
+    return jsonify({"user": d}), 200
 
     d = current_user.to_dict()
     d["total_bookings"] = total_bookings

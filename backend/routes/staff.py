@@ -33,17 +33,20 @@ def dashboard():
     if not staff_member:
         return jsonify({"message": "Staff profile not found"}), 404
 
-    if staff_member.status == "blacklisted":
+    if staff_member.status.lower() == "blacklisted":
         return jsonify({"message": "Your staff account has been blacklisted"}), 403
+
+    if staff_member.status.lower() != "approved":
+        return jsonify({"message": "Your staff account is pending admin approval"}), 403
 
     my_treks = Treks.query.filter_by(staff_id=staff_member.id).all()
     assigned_count = len(my_treks)
-    open_count = sum(1 for t in my_treks if t.status == "Open")
+    upcoming_count = sum(1 for t in my_treks if t.status.lower() == "upcoming")
 
     trek_summaries = []
     total_participants = 0
     for t in my_treks:
-        active_bookings = Bookings.query.filter_by(trek_id=t.id, status="Booked").count()
+        active_bookings = Bookings.query.filter_by(trek_id=t.id).filter(Bookings.status.ilike("confirmed")).count()
         total_participants += active_bookings
         trek_summaries.append({
             "id": t.id,
@@ -63,7 +66,7 @@ def dashboard():
     return jsonify({
         "staff": staff_member.to_dict(),
         "assigned_treks": assigned_count,
-        "open_treks": open_count,
+        "open_treks": upcoming_count,
         "total_participants": total_participants,
         "treks": trek_summaries
     }), 200
@@ -81,7 +84,7 @@ def treks():
     result = []
     for t in my_treks:
         d = t.to_dict()
-        d["registered_trekkers"] = Bookings.query.filter_by(trek_id=t.id, status="Booked").count()
+        d["registered_trekkers"] = Bookings.query.filter_by(trek_id=t.id).filter(Bookings.status.ilike("confirmed")).count()
         result.append(d)
     return jsonify(result), 200
 
@@ -110,15 +113,9 @@ def edit_trek(trek_id):
         trek.available_slots = new_slots
 
     if "status" in data:
-        valid_statuses = ["Open", "Closed", "Started", "Ongoing", "Completed", "Pending", "Approved"]
-        new_status = data["status"]
-        if new_status not in valid_statuses:
-            return jsonify({"message": f"Invalid status. Allowed: {valid_statuses}"}), 400
-        trek.status = new_status
-        if new_status == "Completed":
-            active_bookings = Bookings.query.filter_by(trek_id=trek.id).filter(Bookings.status.in_(["Booked", "Confirmed"])).all()
-            for b in active_bookings:
-                b.status = "Completed"
+        st = data["status"].strip().lower()
+        if st in ["upcoming", "ongoing", "completed"]:
+            trek.status = st
 
     db.session.commit()
     cache.clear()
@@ -184,14 +181,14 @@ def update_participant_status(trek_id, booking_id):
 
     booking = Bookings.query.filter_by(id=booking_id, trek_id=trek.id).first_or_404()
     data = request.get_json() or {}
-    new_status = data.get("status")
+    new_status = data.get("status", "").strip().lower()
 
-    if new_status not in ["Booked", "Completed", "Cancelled", "Pending"]:
-        return jsonify({"message": "Invalid status"}), 400
+    if new_status not in ["pending", "confirmed", "cancelled"]:
+        return jsonify({"message": "Invalid status. Must be pending, confirmed, or cancelled"}), 400
 
-    if new_status == "Cancelled" and booking.status != "Cancelled":
+    if new_status == "cancelled" and booking.status.lower() != "cancelled":
         trek.available_slots += 1
-    elif booking.status == "Cancelled" and new_status in ["Booked", "Pending"]:
+    elif booking.status.lower() == "cancelled" and new_status in ["confirmed", "pending"]:
         if trek.available_slots > 0:
             trek.available_slots -= 1
         else:

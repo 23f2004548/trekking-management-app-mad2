@@ -94,22 +94,22 @@ onMounted(() => {
             </button>
             <button
                 class="btn btn-sm"
-                :class="statusFilter === 'Booked' ? 'btn-success' : 'btn-outline-secondary'"
-                @click="filterBy('Booked')"
+                :class="statusFilter === 'confirmed' ? 'btn-success' : 'btn-outline-secondary'"
+                @click="filterBy('confirmed')"
             >
-                Active / Confirmed
+                Confirmed
             </button>
             <button
                 class="btn btn-sm"
-                :class="statusFilter === 'Completed' ? 'btn-primary' : 'btn-outline-secondary'"
-                @click="filterBy('Completed')"
+                :class="statusFilter === 'pending' ? 'btn-warning text-dark' : 'btn-outline-secondary'"
+                @click="filterBy('pending')"
             >
-                Completed
+                Pending
             </button>
             <button
                 class="btn btn-sm"
-                :class="statusFilter === 'Cancelled' ? 'btn-danger' : 'btn-outline-secondary'"
-                @click="filterBy('Cancelled')"
+                :class="statusFilter === 'cancelled' ? 'btn-danger' : 'btn-outline-secondary'"
+                @click="filterBy('cancelled')"
             >
                 Cancelled
             </button>
@@ -162,26 +162,23 @@ onMounted(() => {
                                 <td>{{ b.trek_start_date }}</td>
                                 <td>{{ b.trek_end_date }}</td>
                                 <td>
-                                    <span v-if="b.status === 'Booked' || b.status === 'Confirmed'" class="badge bg-success">Confirmed</span>
-                                    <span v-else-if="b.status === 'Cancelled'" class="badge bg-danger">Cancelled</span>
-                                    <span v-else-if="b.status === 'Completed'" class="badge bg-primary">Completed</span>
-                                    <span v-else class="badge bg-warning text-dark">Pending</span>
+                                    <span v-if="b.status === 'confirmed'" class="badge bg-success">Confirmed</span>
+                                    <span v-else-if="b.status === 'pending'" class="badge bg-warning text-dark">Pending</span>
+                                    <span v-else-if="b.status === 'cancelled'" class="badge bg-danger">Cancelled</span>
+                                    <span v-else class="badge bg-secondary">{{ b.status }}</span>
                                 </td>
                                 <td>
                                     <span class="fw-semibold">{{ b.staff_name || 'Unassigned' }}</span>
                                 </td>
                                 <td>
                                     <button
-                                        v-if="b.status !== 'Cancelled' && b.status !== 'Completed'"
+                                        v-if="b.status !== 'cancelled'"
                                         class="btn btn-danger btn-sm"
                                         @click="promptCancel(b)"
                                     >
                                         Cancel Booking
                                     </button>
-                                    <span v-else-if="b.status === 'Cancelled'" class="text-muted small">Cancelled</span>
-                                    <span v-else class="text-success small fw-semibold">
-                                        <i class="bi bi-trophy-fill text-warning me-1"></i>Finished
-                                    </span>
+                                    <span v-else class="text-muted small">Cancelled</span>
                                 </td>
                             </tr>
                             <tr v-if="bookings.length === 0">

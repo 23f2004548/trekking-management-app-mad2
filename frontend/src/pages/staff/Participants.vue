@@ -63,8 +63,8 @@ onMounted(() => {
                                 <td>{{ p.user_email }}</td>
                                 <td class="small text-muted">{{ p.booking_date }}</td>
                                 <td class="text-end pe-4">
-                                    <span class="badge bg-success rounded-pill px-3 py-1">
-                                        {{ p.status === 'Booked' ? 'Confirmed' : p.status }}
+                                    <span class="badge rounded-pill px-3 py-1 text-capitalize" :class="p.status === 'confirmed' ? 'bg-success' : (p.status === 'pending' ? 'bg-warning text-dark' : 'bg-danger')">
+                                        {{ p.status }}
                                     </span>
                                 </td>
                             </tr>

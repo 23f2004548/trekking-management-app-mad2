@@ -50,9 +50,10 @@ function filterBy(status) {
 }
 
 function getBadge(status) {
-    if (status === "Booked") return "bg-primary"
-    if (status === "Completed") return "bg-success"
-    if (status === "Cancelled") return "bg-danger"
+    const s = (status || "").toLowerCase()
+    if (s === "confirmed") return "bg-success"
+    if (s === "pending") return "bg-warning text-dark"
+    if (s === "cancelled") return "bg-danger"
     return "bg-secondary"
 }
 
@@ -84,22 +85,22 @@ onMounted(() => {
                         </button>
                         <button
                             class="btn btn-sm"
-                            :class="statusFilter === 'Booked' ? 'btn-primary' : 'btn-outline-secondary'"
-                            @click="filterBy('Booked')"
+                            :class="statusFilter === 'confirmed' ? 'btn-success' : 'btn-outline-secondary'"
+                            @click="filterBy('confirmed')"
                         >
-                            Booked
+                            Confirmed
                         </button>
                         <button
                             class="btn btn-sm"
-                            :class="statusFilter === 'Completed' ? 'btn-success' : 'btn-outline-secondary'"
-                            @click="filterBy('Completed')"
+                            :class="statusFilter === 'pending' ? 'btn-warning text-dark' : 'btn-outline-secondary'"
+                            @click="filterBy('pending')"
                         >
-                            Completed
+                            Pending
                         </button>
                         <button
                             class="btn btn-sm"
-                            :class="statusFilter === 'Cancelled' ? 'btn-danger' : 'btn-outline-secondary'"
-                            @click="filterBy('Cancelled')"
+                            :class="statusFilter === 'cancelled' ? 'btn-danger' : 'btn-outline-secondary'"
+                            @click="filterBy('cancelled')"
                         >
                             Cancelled
                         </button>
@@ -169,10 +170,9 @@ onMounted(() => {
                                     :value="b.status"
                                     @change="updateStatus(b.id, $event.target.value)"
                                 >
-                                    <option>Pending</option>
-                                    <option>Booked</option>
-                                    <option>Completed</option>
-                                    <option>Cancelled</option>
+                                    <option value="pending">pending</option>
+                                    <option value="confirmed">confirmed</option>
+                                    <option value="cancelled">cancelled</option>
                                 </select>
                             </td>
                         </tr>

@@ -51,14 +51,14 @@ def download_report(filename):
 @app.route("/public/analytics")
 def public_analytics():
     treks = Treks.query.all()
-    open_count = Treks.query.filter_by(status="Open").count()
-    completed_count = Treks.query.filter_by(status="Completed").count()
-    trekkers = Bookings.query.filter(Bookings.status.in_(["Booked", "Completed"])).count()
-    counts = [Treks.query.filter_by(status="Open", difficulty=d).count() for d in ["Easy", "Moderate", "Hard"]]
-    featured = [t.to_dict() for t in Treks.query.filter_by(status="Open").limit(3)]
+    upcoming_count = Treks.query.filter(Treks.status.ilike("upcoming")).count()
+    completed_count = Treks.query.filter(Treks.status.ilike("completed")).count()
+    trekkers = Bookings.query.filter(Bookings.status.ilike("confirmed")).count()
+    counts = [Treks.query.filter(Treks.status.ilike("upcoming"), Treks.difficulty.ilike(d)).count() for d in ["Easy", "Moderate", "Hard"]]
+    featured = [t.to_dict() for t in Treks.query.filter(Treks.status.ilike("upcoming")).limit(3)]
     popular = [{"name": t.name, "bookings": len(t.bookings)} for t in sorted(treks, key=lambda t: len(t.bookings), reverse=True)[:5]]
     return jsonify({
-        "metrics": {"open_treks": open_count, "completed_expeditions": completed_count, "trekkers_served": trekkers},
+        "metrics": {"open_treks": upcoming_count, "completed_expeditions": completed_count, "trekkers_served": trekkers},
         "difficulty_breakdown": {"labels": ["Easy", "Moderate", "Hard"], "counts": counts},
         "featured_treks": featured,
         "popular_treks": popular

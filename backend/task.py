@@ -44,7 +44,7 @@ def monthly_report():
         return "No admin found"
 
     total_treks = Treks.query.count()
-    completed_treks = Treks.query.filter_by(status="Completed").count()
+    completed_treks = Treks.query.filter(Treks.status.ilike("completed")).count()
     total_bookings = Bookings.query.count()
 
     html_content = f"""
@@ -87,7 +87,7 @@ def daily_reminders():
 
     sent_count = 0
     for trek in upcoming:
-        bookings = Bookings.query.filter_by(trek_id=trek.id).filter(Bookings.status.in_(["Booked", "Confirmed"])).all()
+        bookings = Bookings.query.filter_by(trek_id=trek.id).filter(Bookings.status.ilike("confirmed")).all()
         for b in bookings:
             if b.user and b.user.email:
                 msg = f"Hello {b.user.name}, your trek '{trek.name}' starts on {trek.start_date}. Be prepared!"

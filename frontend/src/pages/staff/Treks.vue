@@ -97,8 +97,8 @@ onMounted(() => {
                             <td>{{ t.total_slots }}</td>
                             <td>{{ t.available_slots }}</td>
                             <td>
-                                <span class="badge bg-primary rounded-pill px-3 py-1">
-                                    {{ t.status === 'Open' ? 'Upcoming' : t.status }}
+                                <span class="badge rounded-pill px-3 py-1 text-capitalize" :class="t.status === 'upcoming' ? 'bg-primary' : (t.status === 'ongoing' ? 'bg-warning text-dark' : 'bg-success')">
+                                    {{ t.status }}
                                 </span>
                             </td>
                             <td class="text-center pe-3">
@@ -143,11 +143,9 @@ onMounted(() => {
                             <div class="mb-3">
                                 <label class="form-label fw-semibold">Trek Status</label>
                                 <select v-model="form.status" class="form-select" required>
-                                    <option value="Open">Upcoming / Open</option>
-                                    <option value="Started">Started</option>
-                                    <option value="Ongoing">Ongoing</option>
-                                    <option value="Completed">Completed</option>
-                                    <option value="Closed">Closed</option>
+                                    <option value="upcoming">upcoming</option>
+                                    <option value="ongoing">ongoing</option>
+                                    <option value="completed">completed</option>
                                 </select>
                             </div>
                         </div>
