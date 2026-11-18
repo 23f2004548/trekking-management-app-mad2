@@ -10,8 +10,11 @@ from celery_init_app import celery_init_app
 from celery.schedules import crontab
 from task import monthly_report, daily_reminders
 
-# Blueprints (MAD 1 names: auth, admin, staff, user, main)
-from routes import auth, admin, staff, user, main, auth_bp, admin_bp, staff_bp, user_bp, main_bp
+# Blueprints
+from routes.auth import auth_bp
+from routes.admin import admin_bp
+from routes.staff import staff_bp
+from routes.user import user_bp
 
 def create_app(config_class=LocalDevelopmentConfig):
     application = Flask(__name__)
@@ -22,12 +25,11 @@ def create_app(config_class=LocalDevelopmentConfig):
     init_cache(application)
     CORS(application)
 
-    # Register blueprints matching MAD 1 architecture
-    application.register_blueprint(auth)
-    application.register_blueprint(main)
-    application.register_blueprint(admin)
-    application.register_blueprint(staff)
-    application.register_blueprint(user)
+    # Register blueprints matching Placement Portal architecture
+    application.register_blueprint(auth_bp)
+    application.register_blueprint(admin_bp)
+    application.register_blueprint(staff_bp)
+    application.register_blueprint(user_bp)
 
     # File downloads
     @application.route("/exports/<filename>")
