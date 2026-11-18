@@ -373,11 +373,19 @@ def reports():
     cancelled_count = Bookings.query.filter(Bookings.status.ilike("cancelled")).count()
     pending_count = Bookings.query.filter(Bookings.status.ilike("pending")).count()
 
-    easy_count = Treks.query.filter(Treks.difficulty.ilike("easy"), Treks.status.ilike("upcoming")).count()
-    moderate_count = Treks.query.filter(Treks.difficulty.ilike("moderate"), Treks.status.ilike("upcoming")).count()
-    hard_count = Treks.query.filter(Treks.difficulty.ilike("hard"), Treks.status.ilike("upcoming")).count()
-
     all_treks = Treks.query.all()
+    easy_count = 0
+    moderate_count = 0
+    hard_count = 0
+    for t in all_treks:
+        d = (t.difficulty or "").strip().lower()
+        if d == "easy":
+            easy_count += 1
+        elif d == "moderate":
+            moderate_count += 1
+        elif d in ("hard", "difficult", "challenging"):
+            hard_count += 1
+
     popular_treks = []
     for t in all_treks:
         b_count = len(t.bookings)
@@ -397,10 +405,11 @@ def reports():
         "active_users": active_users,
         "completed_treks": completed_treks,
         "booking_stats": {
-            "booked": confirmed_count,
+            "confirmed": confirmed_count,
+            "pending": pending_count,
             "cancelled": cancelled_count,
-            "completed": confirmed_count,
-            "pending": pending_count
+            "booked": confirmed_count,
+            "completed": confirmed_count
         },
         "difficulty_distribution": {
             "Easy": easy_count,

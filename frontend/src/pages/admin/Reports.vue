@@ -16,12 +16,12 @@ const jobLoading = ref(false)
 const jobMessage = ref("")
 const jobError = ref("")
 
+const systemOverviewCanvas = ref(null)
 const bookingStatusCanvas = ref(null)
 const difficultyCanvas = ref(null)
-const popularBarCanvas = ref(null)
+let systemOverviewChart = null
 let bookingStatusChart = null
 let difficultyChart = null
-let popularBarChart = null
 
 async function fetchReports() {
     loading.value = true
@@ -36,11 +36,11 @@ async function fetchReports() {
         })
         generatedReports.value = listRes.data.reports || []
 
+        loading.value = false
         await nextTick()
         renderCharts()
     } catch (err) {
         console.error("Failed to load reports:", err)
-    } finally {
         loading.value = false
     }
 }
@@ -48,36 +48,83 @@ async function fetchReports() {
 function renderCharts() {
     if (!report.value) return
 
-    // 1. Booking Status Distribution Doughnut Chart
-    if (bookingStatusCanvas.value) {
-        if (bookingStatusChart) bookingStatusChart.destroy()
-        bookingStatusChart = new Chart(bookingStatusCanvas.value, {
-            type: "doughnut",
+    // 1. System Overview Bar Chart (Total Treks, Total Bookings, Active Users)
+    if (systemOverviewCanvas.value) {
+        if (systemOverviewChart) systemOverviewChart.destroy()
+        systemOverviewChart = new Chart(systemOverviewCanvas.value, {
+            type: "bar",
             data: {
-                labels: ["Active Bookings", "Completed Summits", "Cancelled"],
+                labels: ["Total Treks", "Total Bookings", "Active Users"],
                 datasets: [{
                     data: [
-                        report.value.booking_stats?.booked || 0,
-                        report.value.booking_stats?.completed || 0,
-                        report.value.booking_stats?.cancelled || 0
+                        report.value.total_treks || 0,
+                        report.value.total_bookings || 0,
+                        report.value.active_users || 0
                     ],
-                    backgroundColor: ["#0d6efd", "#198754", "#dc3545"],
-                    borderWidth: 1
+                    backgroundColor: ["#0d6efd", "#198754", "#0dcaf0"],
+                    borderRadius: 0,
+                    barPercentage: 0.6
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { position: "bottom" } }
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1, precision: 0 },
+                        grid: { color: "#e9ecef" }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                }
             }
         })
     }
 
-    // 2. Trek Difficulty Distribution Pie Chart
+    // 2. Booking Status Distribution Doughnut Chart (Confirmed, Pending, Cancelled)
+    if (bookingStatusCanvas.value) {
+        if (bookingStatusChart) bookingStatusChart.destroy()
+        bookingStatusChart = new Chart(bookingStatusCanvas.value, {
+            type: "doughnut",
+            data: {
+                labels: ["Confirmed", "Pending", "Cancelled"],
+                datasets: [{
+                    data: [
+                        report.value.booking_stats?.confirmed ?? report.value.booking_stats?.booked ?? 0,
+                        report.value.booking_stats?.pending || 0,
+                        report.value.booking_stats?.cancelled || 0
+                    ],
+                    backgroundColor: ["#198754", "#ffc107", "#dc3545"],
+                    borderWidth: 2,
+                    borderColor: "#ffffff"
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: "60%",
+                plugins: {
+                    legend: {
+                        position: "bottom",
+                        labels: {
+                            boxWidth: 24,
+                            padding: 16,
+                            font: { size: 12 }
+                        }
+                    }
+                }
+            }
+        })
+    }
+
+    // 3. Treks by Difficulty Level Bar Chart (Easy, Moderate, Hard)
     if (difficultyCanvas.value) {
         if (difficultyChart) difficultyChart.destroy()
         difficultyChart = new Chart(difficultyCanvas.value, {
-            type: "pie",
+            type: "bar",
             data: {
                 labels: ["Easy", "Moderate", "Hard"],
                 datasets: [{
@@ -87,36 +134,24 @@ function renderCharts() {
                         report.value.difficulty_distribution?.Hard || 0
                     ],
                     backgroundColor: ["#198754", "#ffc107", "#dc3545"],
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { position: "bottom" } }
-            }
-        })
-    }
-
-    // 3. Most Popular Treks Participation Bar Chart
-    if (popularBarCanvas.value && report.value.popular_treks?.length > 0) {
-        if (popularBarChart) popularBarChart.destroy()
-        popularBarChart = new Chart(popularBarCanvas.value, {
-            type: "bar",
-            data: {
-                labels: report.value.popular_treks.map(t => t.name),
-                datasets: [{
-                    label: "Confirmed Participants",
-                    data: report.value.popular_treks.map(t => t.booking_count),
-                    backgroundColor: "#0dcaf0",
-                    borderRadius: 4
+                    borderRadius: 0,
+                    barPercentage: 0.6
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1, precision: 0 },
+                        grid: { color: "#e9ecef" }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                }
             }
         })
     }
@@ -177,9 +212,9 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+    if (systemOverviewChart) systemOverviewChart.destroy()
     if (bookingStatusChart) bookingStatusChart.destroy()
     if (difficultyChart) difficultyChart.destroy()
-    if (popularBarChart) popularBarChart.destroy()
 })
 </script>
 
@@ -246,40 +281,34 @@ onBeforeUnmount(() => {
                 </div>
             </div>
 
-            <!-- Enhancement 2: Interactive Chart.js Visualizations -->
+            <!-- Row 1: System Overview and Booking Status Distribution -->
             <div class="row g-3 mb-4">
                 <div class="col-md-6">
                     <div class="card p-4 shadow-sm border-0 h-100 bg-white">
-                        <h5 class="fw-bold mb-3 text-center">
-                            <i class="bi bi-pie-chart-fill text-primary me-2"></i>Participation & Booking Status
-                        </h5>
-                        <div style="height: 250px; position: relative;">
-                            <canvas ref="bookingStatusCanvas"></canvas>
+                        <h5 class="fw-bold mb-3 text-center">System Overview</h5>
+                        <div style="height: 270px; position: relative;">
+                            <canvas ref="systemOverviewCanvas"></canvas>
                         </div>
                     </div>
                 </div>
 
                 <div class="col-md-6">
                     <div class="card p-4 shadow-sm border-0 h-100 bg-white">
-                        <h5 class="fw-bold mb-3 text-center">
-                            <i class="bi bi-compass text-success me-2"></i>Route Difficulty Breakdown
-                        </h5>
-                        <div style="height: 250px; position: relative;">
-                            <canvas ref="difficultyCanvas"></canvas>
+                        <h5 class="fw-bold mb-3 text-center">Booking Status Distribution</h5>
+                        <div style="height: 270px; position: relative;">
+                            <canvas ref="bookingStatusCanvas"></canvas>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Popular Treks Chart & Table -->
+            <!-- Row 2: Treks by Difficulty Level & Summary -->
             <div class="row g-3 mb-4">
                 <div class="col-md-6">
                     <div class="card p-4 shadow-sm border-0 h-100 bg-white">
-                        <h5 class="fw-bold mb-3 text-center">
-                            <i class="bi bi-bar-chart-fill text-info me-2"></i>Participants per Popular Route
-                        </h5>
-                        <div style="height: 250px; position: relative;">
-                            <canvas ref="popularBarCanvas"></canvas>
+                        <h5 class="fw-bold mb-3 text-center">Treks by Difficulty Level</h5>
+                        <div style="height: 270px; position: relative;">
+                            <canvas ref="difficultyCanvas"></canvas>
                         </div>
                     </div>
                 </div>
@@ -289,12 +318,12 @@ onBeforeUnmount(() => {
                         <h5 class="fw-bold mb-3">Participation Rates & Summary</h5>
                         <ul class="list-group list-group-flush">
                             <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <span><i class="bi bi-bookmark-check text-primary me-2"></i>Active Confirmed Bookings</span>
-                                <span class="badge bg-primary rounded-pill">{{ report.booking_stats?.booked || 0 }}</span>
+                                <span><i class="bi bi-bookmark-check text-success me-2"></i>Confirmed Bookings</span>
+                                <span class="badge bg-success rounded-pill">{{ report.booking_stats?.confirmed ?? report.booking_stats?.booked ?? 0 }}</span>
                             </li>
                             <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <span><i class="bi bi-check2-circle text-success me-2"></i>Completed Expeditions</span>
-                                <span class="badge bg-success rounded-pill">{{ report.booking_stats?.completed || 0 }}</span>
+                                <span><i class="bi bi-clock-history text-warning me-2"></i>Pending Bookings</span>
+                                <span class="badge bg-warning text-dark rounded-pill">{{ report.booking_stats?.pending || 0 }}</span>
                             </li>
                             <li class="list-group-item d-flex justify-content-between align-items-center">
                                 <span><i class="bi bi-x-circle text-danger me-2"></i>Cancelled Reservations</span>
