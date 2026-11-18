@@ -62,10 +62,13 @@ def add_trek():
         raw_status = data.get("status", "upcoming").strip().lower()
         valid_status = raw_status if raw_status in ["upcoming", "ongoing", "completed"] else "upcoming"
 
+        raw_diff = str(data.get("difficulty", "Easy")).strip().capitalize()
+        valid_diff = raw_diff if raw_diff in ["Easy", "Moderate", "Hard"] else "Easy"
+
         trek = Treks(
             name=data["name"].strip(),
             location=data["location"].strip(),
-            difficulty=data.get("difficulty", "Easy"),
+            difficulty=valid_diff,
             duration=int(data["duration"]),
             total_slots=int(data["total_slots"]),
             available_slots=int(data.get("available_slots", data["total_slots"])),
@@ -93,7 +96,9 @@ def edit_trek(trek_id):
     try:
         if "name" in data: trek.name = data["name"].strip()
         if "location" in data: trek.location = data["location"].strip()
-        if "difficulty" in data: trek.difficulty = data["difficulty"]
+        if "difficulty" in data:
+            raw_diff = str(data["difficulty"]).strip().capitalize()
+            trek.difficulty = raw_diff if raw_diff in ["Easy", "Moderate", "Hard"] else "Easy"
         if "duration" in data: trek.duration = int(data["duration"])
         if "total_slots" in data: trek.total_slots = int(data["total_slots"])
         if "available_slots" in data: trek.available_slots = int(data["available_slots"])
@@ -383,7 +388,7 @@ def reports():
             easy_count += 1
         elif d == "moderate":
             moderate_count += 1
-        elif d in ("hard", "difficult", "challenging"):
+        elif d == "hard":
             hard_count += 1
 
     popular_treks = []
