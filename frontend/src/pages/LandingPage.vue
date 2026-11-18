@@ -16,6 +16,12 @@ const popularChartCanvas = ref(null)
 let diffChartInstance = null
 let popularChartInstance = null
 
+const trekImages = ["/trek2.jpg", "/trek3.jpg", "/trekking1.jpg"]
+
+function getTrekImage(id) {
+    return trekImages[((id || 1) - 1) % trekImages.length]
+}
+
 async function fetchPublicAnalytics() {
     try {
         const res = await axios.get(`${BASE_URL}/public/analytics`)
@@ -32,7 +38,6 @@ async function fetchPublicAnalytics() {
 function renderCharts() {
     if (!analytics.value) return
 
-    // Difficulty Doughnut Chart
     if (diffChartCanvas.value) {
         if (diffChartInstance) diffChartInstance.destroy()
         diffChartInstance = new Chart(diffChartCanvas.value, {
@@ -53,7 +58,6 @@ function renderCharts() {
         })
     }
 
-    // Popular Treks Bar Chart
     if (popularChartCanvas.value && analytics.value.popular_treks.length > 0) {
         if (popularChartInstance) popularChartInstance.destroy()
         popularChartInstance = new Chart(popularChartCanvas.value, {
@@ -89,7 +93,6 @@ onBeforeUnmount(() => {
 
 <template>
     <div class="landing-page min-vh-100 d-flex flex-column justify-content-between py-4">
-        <!-- Hero Header matching MAD 1 style -->
         <main class="container text-center mt-3 mb-4">
             <h1 class="fw-bold display-4 text-white" id="title" style="text-shadow: 0 2px 8px rgba(0,0,0,0.4);">
                 TrekFlow
@@ -107,9 +110,7 @@ onBeforeUnmount(() => {
             </div>
         </main>
 
-        <!-- Enhancement 2: Public Landing Dashboard (Read-only Analytics, No Sensitive Data) -->
         <div class="container mb-5" v-if="analytics">
-            <!-- Public Metric Counter Badges -->
             <div class="row g-3 mb-4">
                 <div class="col-md-4">
                     <div class="card shadow-sm border-0 text-center p-3" style="background: rgba(255,255,255,0.92); backdrop-filter: blur(4px);">
@@ -134,7 +135,6 @@ onBeforeUnmount(() => {
                 </div>
             </div>
 
-            <!-- Public Charts (Chart.js) -->
             <div class="row g-3 mb-4">
                 <div class="col-md-6">
                     <div class="card shadow-sm border-0 p-3 h-100" style="background: rgba(255,255,255,0.95);">
@@ -158,7 +158,6 @@ onBeforeUnmount(() => {
                 </div>
             </div>
 
-            <!-- Featured Open Treks Grid -->
             <div class="card shadow-sm border-0 p-3" style="background: rgba(255,255,255,0.95);" v-if="analytics.featured_treks.length > 0">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h6 class="fw-bold mb-0">
@@ -170,18 +169,21 @@ onBeforeUnmount(() => {
                 </div>
                 <div class="row row-cols-1 row-cols-md-3 g-3">
                     <div v-for="t in analytics.featured_treks" :key="t.id" class="col">
-                        <div class="border rounded p-3 h-100 bg-white d-flex flex-column">
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <h6 class="fw-bold mb-0 text-dark">{{ t.name }}</h6>
-                                <span v-if="t.difficulty?.toLowerCase() === 'easy'" class="badge bg-success">Easy</span>
-                                <span v-else-if="t.difficulty?.toLowerCase() === 'moderate'" class="badge bg-warning text-dark">Moderate</span>
-                                <span v-else class="badge bg-danger">Hard</span>
-                            </div>
-                            <p class="text-muted small mb-1"><i class="bi bi-geo-alt text-danger me-1"></i>{{ t.location }}</p>
-                            <p class="text-muted small mb-1"><i class="bi bi-clock text-primary me-1"></i>{{ t.duration }} Days</p>
-                            <div class="mt-auto d-flex justify-content-between align-items-center pt-2 border-top">
-                                <span class="fw-bold text-success">₹{{ t.price }}</span>
-                                <button class="btn btn-sm btn-primary py-0 px-2" @click="router.push('/login')">Book Now</button>
+                        <div class="border rounded h-100 bg-white d-flex flex-column overflow-hidden">
+                            <img :src="getTrekImage(t.id)" class="card-img-top" alt="Trek photo" style="height: 140px; object-fit: cover;" />
+                            <div class="p-3 d-flex flex-column flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h6 class="fw-bold mb-0 text-dark">{{ t.name }}</h6>
+                                    <span v-if="t.difficulty?.toLowerCase() === 'easy'" class="badge bg-success">Easy</span>
+                                    <span v-else-if="t.difficulty?.toLowerCase() === 'moderate'" class="badge bg-warning text-dark">Moderate</span>
+                                    <span v-else class="badge bg-danger">Hard</span>
+                                </div>
+                                <p class="text-muted small mb-1"><i class="bi bi-geo-alt text-danger me-1"></i>{{ t.location }}</p>
+                                <p class="text-muted small mb-1"><i class="bi bi-clock text-primary me-1"></i>{{ t.duration }} Days</p>
+                                <div class="mt-auto d-flex justify-content-between align-items-center pt-2 border-top">
+                                    <span class="fw-bold text-success">₹{{ t.price }}</span>
+                                    <button class="btn btn-sm btn-primary py-0 px-2" @click="router.push('/login')">Book Now</button>
+                                </div>
                             </div>
                         </div>
                     </div>

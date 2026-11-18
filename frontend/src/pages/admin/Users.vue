@@ -60,7 +60,6 @@ onMounted(() => {
 
 <template>
     <div class="container py-4">
-        <!-- Notification alert matching screenshot -->
         <div v-if="success" class="alert py-2 px-3 small border-0 mb-3" style="background-color: #d1f4ff; color: #055160;">
             {{ success }}
         </div>

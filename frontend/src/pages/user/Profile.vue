@@ -66,7 +66,6 @@ onMounted(() => {
     <div>
         <h4 class="fw-bold mb-3">Profile</h4>
 
-        <!-- Alerts -->
         <div v-if="success" class="alert alert-success alert-dismissible fade show" role="alert">
             <i class="bi bi-check-circle-fill me-2"></i>{{ success }}
             <button type="button" class="btn-close" @click="success = ''"></button>
@@ -80,7 +79,6 @@ onMounted(() => {
             <div class="spinner-border text-primary" role="status"></div>
         </div>
 
-        <!-- Profile Card matching MAD 1 user_profile.html -->
         <div v-else class="card shadow-sm border-0 bg-white">
             <div class="card-body p-4">
                 <form @submit.prevent="saveProfile">

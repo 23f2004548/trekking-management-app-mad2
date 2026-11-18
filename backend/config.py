@@ -14,11 +14,9 @@ class LocalDevelopmentConfig(Config):
     JWT_SECRET_KEY = 'tma_v2_super_secret_jwt_key_placement_satyam_2026_modern_app'
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(days=7)
     
-    # Caching
     CACHE_TYPE = 'SimpleCache'
     CACHE_DEFAULT_TIMEOUT = 300
     
-    # SMTP Config for MailHog
     SMTP_SERVER = "localhost"
     SMTP_PORT = 1025
     SENDER_EMAIL = "noreply@trekkingapp.com"

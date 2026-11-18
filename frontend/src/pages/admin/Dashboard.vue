@@ -43,7 +43,6 @@ onMounted(() => {
             </div>
         </div>
 
-        <!-- Stats Cards -->
         <div v-if="loading" class="text-center py-5">
             <div class="spinner-border text-primary" role="status"></div>
         </div>

@@ -6,7 +6,6 @@ from cache import cache
 
 staff_bp = Blueprint("staff_bp", __name__, url_prefix="/staff")
 
-# ── Staff Required Decorator ──────────────────────────────────────────────────
 def staff_required(f):
     @wraps(f)
     @jwt_required()
@@ -18,13 +17,11 @@ def staff_required(f):
 
 
 def get_current_staff():
-    """Helper to retrieve authenticated staff profile."""
     if not current_user:
         return None
     return Staff.query.filter_by(user_id=current_user.id).first()
 
 
-# ── 1. Staff Dashboard ────────────────────────────────────────────────────────
 @staff_bp.route("/dashboard", methods=["GET"])
 @staff_required
 @cache.cached(timeout=60)
@@ -72,7 +69,6 @@ def dashboard():
     }), 200
 
 
-# ── 2. Assigned Treks ─────────────────────────────────────────────────────────
 @staff_bp.route("/treks", methods=["GET"])
 @staff_required
 def treks():
@@ -89,7 +85,6 @@ def treks():
     return jsonify(result), 200
 
 
-# ── 3. Edit Trek ──────────────────────────────────────────────────────────────
 @staff_bp.route("/treks/<int:trek_id>", methods=["PUT"])
 @staff_required
 def edit_trek(trek_id):
@@ -125,7 +120,6 @@ def edit_trek(trek_id):
     }), 200
 
 
-# ── 4. Participants ───────────────────────────────────────────────────────────
 @staff_bp.route("/participants", methods=["GET"])
 @staff_bp.route("/treks/<int:trek_id>/participants", methods=["GET"])
 @staff_required
@@ -167,7 +161,6 @@ def participants(trek_id=None):
     return jsonify(results), 200
 
 
-# ── 5. Manage Participant Status ──────────────────────────────────────────────
 @staff_bp.route("/treks/<int:trek_id>/participants/<int:booking_id>/status", methods=["POST"])
 @staff_required
 def update_participant_status(trek_id, booking_id):
@@ -203,7 +196,6 @@ def update_participant_status(trek_id, booking_id):
     }), 200
 
 
-# ── 6. Staff Profile ──────────────────────────────────────────────────────────
 @staff_bp.route("/profile", methods=["GET", "PUT"])
 @staff_required
 def profile():

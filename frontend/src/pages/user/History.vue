@@ -83,7 +83,6 @@ onMounted(() => {
 
 <template>
     <div class="container py-4">
-        <!-- Notification alert -->
         <div v-if="exportMsg" class="alert py-2 px-3 small border-0 mb-3" style="background-color: #d1f4ff; color: #055160;">
             {{ exportMsg }}
         </div>
@@ -108,7 +107,6 @@ onMounted(() => {
             <div class="spinner-border text-primary" role="status"></div>
         </div>
 
-        <!-- History Card matching MAD 1 user_trek_history.html -->
         <div v-else class="card shadow-sm border">
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">

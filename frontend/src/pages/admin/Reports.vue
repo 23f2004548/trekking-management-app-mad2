@@ -48,7 +48,6 @@ async function fetchReports() {
 function renderCharts() {
     if (!report.value) return
 
-    // 1. System Overview Bar Chart (Total Treks, Total Bookings, Active Users)
     if (systemOverviewCanvas.value) {
         if (systemOverviewChart) systemOverviewChart.destroy()
         systemOverviewChart = new Chart(systemOverviewCanvas.value, {
@@ -84,7 +83,6 @@ function renderCharts() {
         })
     }
 
-    // 2. Booking Status Distribution Doughnut Chart (Confirmed, Pending, Cancelled)
     if (bookingStatusCanvas.value) {
         if (bookingStatusChart) bookingStatusChart.destroy()
         bookingStatusChart = new Chart(bookingStatusCanvas.value, {
@@ -120,7 +118,6 @@ function renderCharts() {
         })
     }
 
-    // 3. Treks by Difficulty Level Bar Chart (Easy, Moderate, Hard)
     if (difficultyCanvas.value) {
         if (difficultyChart) difficultyChart.destroy()
         difficultyChart = new Chart(difficultyCanvas.value, {
@@ -250,7 +247,6 @@ onBeforeUnmount(() => {
             </div>
         </div>
 
-        <!-- Job Alerts -->
         <div v-if="jobMessage" class="alert alert-success alert-dismissible fade show py-2" role="alert">
             <i class="bi bi-check-circle-fill me-2"></i>{{ jobMessage }}
             <button type="button" class="btn-close btn-sm" @click="jobMessage = ''"></button>
@@ -265,7 +261,6 @@ onBeforeUnmount(() => {
         </div>
 
         <div v-else-if="report">
-            <!-- Key Metrics -->
             <div class="row g-3 mb-4">
                 <div class="col-md-3">
                     <StatsCard card_title="Total Routes" :card_value="report.total_treks || 0" />
@@ -281,7 +276,6 @@ onBeforeUnmount(() => {
                 </div>
             </div>
 
-            <!-- Row 1: System Overview and Booking Status Distribution -->
             <div class="row g-3 mb-4">
                 <div class="col-md-6">
                     <div class="card p-4 shadow-sm border-0 h-100 bg-white">
@@ -302,7 +296,6 @@ onBeforeUnmount(() => {
                 </div>
             </div>
 
-            <!-- Row 2: Treks by Difficulty Level & Summary -->
             <div class="row g-3 mb-4">
                 <div class="col-md-6">
                     <div class="card p-4 shadow-sm border-0 h-100 bg-white">
@@ -338,7 +331,6 @@ onBeforeUnmount(() => {
                 </div>
             </div>
 
-            <!-- Milestone 7: Generated Monthly Activity Reports (HTML Archive) -->
             <div class="card p-3 shadow-sm border-0 bg-white">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h5 class="fw-bold mb-0">

@@ -88,7 +88,6 @@ onBeforeUnmount(() => {
         </div>
 
         <div v-else>
-            <!-- Stats Cards in MAD 1 style -->
             <div class="row g-3 mb-4">
                 <div class="col-4">
                     <StatsCard card_title="Assigned Treks" :card_value="stats.assigned_treks || 0" icon="bi-compass" />
@@ -101,7 +100,6 @@ onBeforeUnmount(() => {
                 </div>
             </div>
 
-            <!-- Participants per Assigned Trek Bar Chart (MAD 1 style) -->
             <div class="row mb-4" v-if="assignedTreks.length > 0">
                 <div class="col-12">
                     <div class="card shadow-sm border-0 bg-white">

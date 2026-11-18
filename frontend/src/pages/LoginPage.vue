@@ -25,7 +25,6 @@ async function login() {
             localStorage.setItem("role", res.data.role)
             localStorage.setItem("user_name", res.data.user?.name || "User")
             
-            // Role-specific redirect
             if (res.data.role === 'admin') {
                 router.push('/admin/dashboard')
             } else if (res.data.role === 'staff') {

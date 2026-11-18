@@ -103,7 +103,6 @@ onMounted(() => {
 
 <template>
     <div class="container py-4">
-        <!-- Success/Error alert banner matching screenshot -->
         <div v-if="success" class="alert py-2 px-3 small border-0 mb-3" style="background-color: #d1f4ff; color: #055160;">
             {{ success }}
         </div>
@@ -116,7 +115,6 @@ onMounted(() => {
             <button class="btn btn-primary btn-sm px-3" @click="showModal = true">+ Add Staff Member</button>
         </div>
 
-        <!-- Filter tabs matching MAD 1 style -->
         <ul class="nav nav-tabs mb-3">
             <li class="nav-item">
                 <button
@@ -242,7 +240,6 @@ onMounted(() => {
             </div>
         </div>
 
-        <!-- Add Staff Modal -->
         <div v-if="showModal" class="modal d-block" style="background: rgba(0,0,0,0.5);">
             <div class="modal-dialog">
                 <div class="modal-content">

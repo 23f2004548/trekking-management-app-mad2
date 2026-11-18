@@ -7,7 +7,6 @@ from mail import send_email
 
 BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# 1. User CSV Export
 @shared_task(ignore_result=False, name="download_csv")
 def download_csv(user_id):
     user = Users.query.get(user_id)
@@ -36,7 +35,6 @@ def download_csv(user_id):
             ])
     return filename
 
-# 2. Monthly Activity Report for Admin
 @shared_task(name="monthly_report")
 def monthly_report():
     admin = Users.query.filter_by(role="admin").first()
@@ -75,7 +73,6 @@ def monthly_report():
     send_email(admin.email, "Monthly Trekking Activity Report", html_content, "html")
     return "Monthly Report Sent Successfully"
 
-# 3. Daily Reminders for Upcoming Treks
 @shared_task(name="daily_reminders")
 def daily_reminders():
     today = date.today()

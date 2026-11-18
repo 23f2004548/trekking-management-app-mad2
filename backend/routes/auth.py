@@ -4,7 +4,6 @@ from flask_jwt_extended import create_access_token
 
 auth_bp = Blueprint("auth_bp", __name__)
 
-# ── 1. Login ──────────────────────────────────────────────────────────────────
 @auth_bp.route("/login", methods=["POST"])
 def login():
     data = request.get_json() or {}
@@ -43,7 +42,6 @@ def login():
     }), 200
 
 
-# ── 2. Register (User or Staff) ───────────────────────────────────────────────
 @auth_bp.route("/register", methods=["POST"])
 def register():
     data = request.get_json() or {}
@@ -116,8 +114,6 @@ def register():
         }), 201
 
 
-# ── 3. Logout ─────────────────────────────────────────────────────────────────
 @auth_bp.route("/logout", methods=["POST"])
 def logout():
-    """Stateless JWT logout endpoint."""
     return jsonify({"message": "Successfully logged out"}), 200

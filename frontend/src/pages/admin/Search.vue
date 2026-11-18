@@ -33,7 +33,6 @@ async function executeSearch() {
             <i class="bi bi-search me-2"></i>Search Dashboard
         </h2>
 
-        <!-- Search Input Bar matching screenshot -->
         <form @submit.prevent="executeSearch" class="row g-3 mb-4">
             <div class="col-8">
                 <input
@@ -60,9 +59,7 @@ async function executeSearch() {
             </div>
         </form>
 
-        <!-- Search Results -->
         <div v-if="results">
-            <!-- Treks Results -->
             <div v-if="results.treks && results.treks.length > 0" class="card shadow-sm border mb-4">
                 <div class="card-header bg-white py-3 border-bottom fw-bold">
                     Trek Results ({{ results.treks.length }})
@@ -100,7 +97,6 @@ async function executeSearch() {
                 </div>
             </div>
 
-            <!-- Users Results -->
             <div v-if="results.users && results.users.length > 0" class="card shadow-sm border mb-4">
                 <div class="card-header bg-white py-3 border-bottom fw-bold">
                     User Results ({{ results.users.length }})
@@ -136,7 +132,6 @@ async function executeSearch() {
                 </div>
             </div>
 
-            <!-- Staff Results -->
             <div v-if="results.staff && results.staff.length > 0" class="card shadow-sm border mb-4">
                 <div class="card-header bg-white py-3 border-bottom fw-bold">
                     Staff Results ({{ results.staff.length }})

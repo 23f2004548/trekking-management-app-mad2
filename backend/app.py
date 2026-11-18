@@ -22,7 +22,6 @@ jwt.init_app(app)
 cache.init_app(app)
 db.init_app(app)
 
-# Celery
 celery = celery_init_app(app)
 celery.autodiscover_tasks()
 
@@ -33,7 +32,6 @@ def setup_periodic_tasks(sender, **kwargs):
 
 CORS(app)
 
-# Routes
 app.register_blueprint(auth_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(staff_bp)

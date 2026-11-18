@@ -108,7 +108,6 @@ onBeforeUnmount(() => {
         </div>
 
         <div v-else>
-            <!-- Stat Cards matching MAD 1 user_dashboard.html -->
             <div class="row g-3 mb-4">
                 <div class="col-4">
                     <StatsCard
@@ -133,7 +132,6 @@ onBeforeUnmount(() => {
                 </div>
             </div>
 
-            <!-- Bookings by Difficulty Chart matching MAD 1 user_dashboard.html -->
             <div class="row g-2 mb-4">
                 <div class="col-12">
                     <div class="card shadow-sm border-0 bg-white h-100">

@@ -6,7 +6,6 @@ import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import router from "./router";
 import axios from "axios";
 
-// Automatically attach current JWT token from localStorage on every request
 axios.interceptors.request.use((config) => {
     const token = localStorage.getItem("token");
     if (token) {
@@ -17,12 +16,10 @@ axios.interceptors.request.use((config) => {
     return Promise.reject(error);
 });
 
-// Automatically handle expired/unauthorized sessions
 axios.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response && error.response.status === 401) {
-            // Clear invalid/expired session
             const currentPath = window.location.pathname;
             if (currentPath !== "/login" && currentPath !== "/" && currentPath !== "/register") {
                 localStorage.removeItem("token");

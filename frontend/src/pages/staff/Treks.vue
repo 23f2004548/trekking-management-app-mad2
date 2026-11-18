@@ -119,7 +119,6 @@ onMounted(() => {
             </div>
         </div>
 
-        <!-- Edit Modal -->
         <div v-if="showModal" class="modal d-block" style="background: rgba(0,0,0,0.5);">
             <div class="modal-dialog">
                 <div class="modal-content">

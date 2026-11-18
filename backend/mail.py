@@ -4,9 +4,6 @@ from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
 
-# MailHog SMTP Configuration
-# MailHog SMTP server listens on port 1025.
-# MailHog Web UI inbox is viewable at http://localhost:8025.
 try:
     from config import LocalDevelopmentConfig
     SMTP_SERVER_HOST = getattr(LocalDevelopmentConfig, 'SMTP_SERVER', 'localhost')

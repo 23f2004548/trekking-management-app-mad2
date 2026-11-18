@@ -65,7 +65,6 @@ onMounted(() => {
 
 <template>
     <div class="container py-4">
-        <!-- Notification alert -->
         <div v-if="success" class="alert py-2 px-3 small border-0 mb-3" style="background-color: #d1f4ff; color: #055160;">
             {{ success }}
         </div>
@@ -79,7 +78,6 @@ onMounted(() => {
             <div class="spinner-border text-primary" role="status"></div>
         </div>
 
-        <!-- Bookings Card matching screenshot exactly -->
         <div v-else class="card shadow-sm border">
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
@@ -130,7 +128,6 @@ onMounted(() => {
             </div>
         </div>
 
-        <!-- Cancel Confirmation Modal -->
         <div v-if="showCancelModal" class="modal fade show d-block" style="background: rgba(0,0,0,0.5)">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">

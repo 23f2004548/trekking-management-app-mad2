@@ -59,15 +59,12 @@ function logout() {
 </script>
 
 <template>
-    <!-- Public Layout (Landing / Login / Register) -->
     <div v-if="isAuthRoute || !token">
         <RouterView />
     </div>
 
-    <!-- Authenticated Layout (MAD 1 Sidebar + Topbar) -->
     <div v-else class="container-fluid">
         <div class="row min-vh-100 flex-nowrap">
-            <!-- Left Sidebar -->
             <aside class="col-2 sidebar d-flex flex-column border-end p-0">
                 <div class="p-3 border-bottom">
                     <div class="fw-bold text-center text-md-start fs-5">TrekFlow</div>
@@ -91,9 +88,7 @@ function logout() {
                 </nav>
             </aside>
 
-            <!-- Main Content Area -->
             <main class="col-10 p-0 d-flex flex-column">
-                <!-- Topbar -->
                 <nav class="navbar navbar-expand bg-white page-topbar px-4">
                     <div class="navbar-brand mb-0 fw-semibold small">Trekking Management Application</div>
                     <div class="ms-auto d-flex align-items-center gap-3">
@@ -106,7 +101,6 @@ function logout() {
                     </div>
                 </nav>
 
-                <!-- Page Body -->
                 <div class="p-4 flex-grow-1">
                     <RouterView />
                 </div>

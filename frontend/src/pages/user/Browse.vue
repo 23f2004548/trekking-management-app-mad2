@@ -15,6 +15,12 @@ const success = ref("")
 const bookingTrek = ref(null)
 const showConfirmModal = ref(false)
 
+const trekImages = ["/trek2.jpg", "/trek3.jpg", "/trekking1.jpg"]
+
+function getTrekImage(id) {
+    return trekImages[((id || 1) - 1) % trekImages.length]
+}
+
 async function fetchTreks() {
     loading.value = true
     error.value = ""
@@ -76,7 +82,6 @@ onMounted(() => {
             <i class="bi bi-search text-primary me-2"></i>Browse Treks
         </h4>
 
-        <!-- Alert messages -->
         <div v-if="success" class="alert alert-success alert-dismissible fade show" role="alert">
             <i class="bi bi-check-circle-fill me-2"></i>{{ success }}
             <button type="button" class="btn-close" @click="success = ''"></button>
@@ -86,7 +91,6 @@ onMounted(() => {
             <button type="button" class="btn-close" @click="error = ''"></button>
         </div>
 
-        <!-- Filter Card matching MAD 1 user_browse.html -->
         <div class="card shadow-sm border-0 mb-4 bg-white">
             <div class="card-body p-3">
                 <form class="row g-3" @submit.prevent="fetchTreks">
@@ -130,11 +134,10 @@ onMounted(() => {
             <div class="spinner-border text-primary" role="status"></div>
         </div>
 
-        <!-- Treks Grid matching MAD 1 user_browse.html -->
         <div v-else-if="treks.length > 0" class="row row-cols-1 row-cols-md-3 g-4">
             <div v-for="trek in treks" :key="trek.id" class="col">
                 <div class="card h-100 shadow-sm border-0 bg-white">
-                    <img src="/trek2.jpg" class="card-img-top" alt="Trek photo" style="height: 180px; object-fit: cover;" />
+                    <img :src="getTrekImage(trek.id)" class="card-img-top" alt="Trek photo" style="height: 180px; object-fit: cover;" />
                     <div class="card-body d-flex flex-column">
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <h5 class="card-title fw-bold mb-0 text-dark">{{ trek.name }}</h5>
@@ -204,7 +207,6 @@ onMounted(() => {
             <p class="text-muted">No treks found matching your criteria.</p>
         </div>
 
-        <!-- Booking Confirmation Modal -->
         <div v-if="showConfirmModal" class="modal fade show d-block" style="background: rgba(0,0,0,0.5)">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">

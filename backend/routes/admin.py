@@ -8,7 +8,6 @@ from cache import cache
 
 admin_bp = Blueprint("admin_bp", __name__, url_prefix="/admin")
 
-# ── Admin Required Decorator ──────────────────────────────────────────────────
 def admin_required(f):
     @wraps(f)
     @jwt_required()
@@ -19,7 +18,6 @@ def admin_required(f):
     return decorated
 
 
-# ── 1. Dashboard Stats ────────────────────────────────────────────────────────
 @admin_bp.route("/dashboard", methods=["GET"])
 @admin_required
 @cache.cached(timeout=60)
@@ -45,7 +43,6 @@ def dashboard():
     }), 200
 
 
-# ── 2. Treks Management ───────────────────────────────────────────────────────
 @admin_bp.route("/treks", methods=["GET"])
 @admin_required
 @cache.cached(timeout=60)
@@ -133,7 +130,6 @@ def delete_trek(trek_id):
     return jsonify({"message": "Trek deleted successfully"}), 200
 
 
-# ── 3. Staff Management ───────────────────────────────────────────────────────
 @admin_bp.route("/staff", methods=["GET"])
 @admin_required
 @cache.cached(timeout=60)
@@ -238,7 +234,6 @@ def delete_staff(staff_id):
     return jsonify({"message": "Staff member deleted successfully"}), 200
 
 
-# ── 4. Users Management ───────────────────────────────────────────────────────
 @admin_bp.route("/users", methods=["GET"])
 @admin_required
 @cache.cached(timeout=60)
@@ -275,7 +270,6 @@ def delete_user(user_id):
     return jsonify({"message": "User deleted successfully"}), 200
 
 
-# ── 5. Bookings Management ────────────────────────────────────────────────────
 @admin_bp.route("/bookings", methods=["GET"])
 @admin_required
 def bookings():
@@ -327,7 +321,6 @@ def change_booking_status(booking_id):
     return jsonify({"message": "Booking status updated successfully", "booking": booking.to_dict()}), 200
 
 
-# ── 6. Search ─────────────────────────────────────────────────────────────────
 @admin_bp.route("/search", methods=["GET"])
 @admin_required
 def search():
@@ -364,7 +357,6 @@ def search():
     return jsonify({"treks": treks_res, "users": users_res, "staff": staff_res}), 200
 
 
-# ── 7. Reports ────────────────────────────────────────────────────────────────
 @admin_bp.route("/reports", methods=["GET"])
 @admin_required
 @cache.cached(timeout=60)
@@ -425,7 +417,6 @@ def reports():
     }), 200
 
 
-# ── 8. Celery Batch Jobs ──────────────────────────────────────────────────────
 @admin_bp.route("/jobs/monthly-report", methods=["POST"])
 @admin_required
 def trigger_monthly_report():
@@ -481,7 +472,6 @@ def list_generated_reports():
     return jsonify({"reports": files}), 200
 
 
-# ── 9. Cache Control ──────────────────────────────────────────────────────────
 @admin_bp.route("/cache/clear", methods=["POST"])
 @admin_required
 def clear_api_cache():

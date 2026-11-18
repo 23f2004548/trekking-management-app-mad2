@@ -56,7 +56,6 @@ onMounted(() => {
 
 <template>
     <div class="container py-4">
-        <!-- Success/Error alert banner matching screenshot -->
         <div v-if="success" class="alert py-2 px-3 small border-0 mb-3" style="background-color: #d1f4ff; color: #055160;">
             {{ success }}
         </div>
@@ -68,7 +67,6 @@ onMounted(() => {
             <h3 class="fw-bold mb-0">Bookings</h3>
         </div>
 
-        <!-- Filter tabs matching MAD 1 style -->
         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
             <ul class="nav nav-tabs">
                 <li class="nav-item">

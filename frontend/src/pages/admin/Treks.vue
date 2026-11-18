@@ -134,7 +134,6 @@ onMounted(() => {
 
 <template>
     <div class="container py-4">
-        <!-- Success/Error alert banner matching screenshot -->
         <div v-if="success" class="alert py-2 px-3 small border-0 mb-3" style="background-color: #d1f4ff; color: #055160;">
             {{ success }}
         </div>
@@ -207,7 +206,6 @@ onMounted(() => {
             </div>
         </div>
 
-        <!-- Add/Edit Trek Modal -->
         <div v-if="showModal" class="modal d-block" style="background: rgba(0,0,0,0.5);">
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">

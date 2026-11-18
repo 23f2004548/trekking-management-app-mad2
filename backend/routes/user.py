@@ -6,7 +6,6 @@ from cache import cache
 
 user_bp = Blueprint("user_bp", __name__, url_prefix="/user")
 
-# ── User Required Decorator ───────────────────────────────────────────────────
 def user_required(f):
     @wraps(f)
     @jwt_required()
@@ -17,7 +16,6 @@ def user_required(f):
     return decorated
 
 
-# ── 1. User Dashboard ─────────────────────────────────────────────────────────
 @user_bp.route("/dashboard", methods=["GET"])
 @user_required
 def dashboard():
@@ -67,7 +65,6 @@ def dashboard():
     }), 200
 
 
-# ── 2. Browse Treks ───────────────────────────────────────────────────────────
 @user_bp.route("/treks", methods=["GET"])
 @user_required
 def browse():
@@ -100,7 +97,6 @@ def browse():
     return jsonify({"treks": trek_list}), 200
 
 
-# ── 3. Book Trek ──────────────────────────────────────────────────────────────
 @user_bp.route("/book/<int:trek_id>", methods=["POST"])
 @user_required
 def book_trek(trek_id):
@@ -141,7 +137,6 @@ def book_trek(trek_id):
     }), 201
 
 
-# ── 4. My Bookings ────────────────────────────────────────────────────────────
 @user_bp.route("/bookings", methods=["GET"])
 @user_required
 def bookings():
@@ -155,7 +150,6 @@ def bookings():
     return jsonify({"bookings": [b.to_dict() for b in user_bookings]}), 200
 
 
-# ── 5. Cancel Booking ─────────────────────────────────────────────────────────
 @user_bp.route("/bookings/<int:booking_id>/cancel", methods=["POST"])
 @user_required
 def cancel_booking(booking_id):
@@ -185,7 +179,6 @@ def cancel_booking(booking_id):
     }), 200
 
 
-# ── 6. Trekking History ───────────────────────────────────────────────────────
 @user_bp.route("/history", methods=["GET"])
 @user_required
 def history():
@@ -239,7 +232,6 @@ def history():
     }), 200
 
 
-# ── 7. Profile Management ─────────────────────────────────────────────────────
 @user_bp.route("/profile", methods=["GET", "PUT"])
 @user_required
 def profile():
@@ -277,7 +269,6 @@ def profile():
     return jsonify({"user": d}), 200
 
 
-# ── 8. Celery CSV Export ──────────────────────────────────────────────────────
 @user_bp.route("/export/csv", methods=["POST"])
 @user_required
 def trigger_csv_export():

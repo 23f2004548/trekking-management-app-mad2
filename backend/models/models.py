@@ -12,7 +12,6 @@ class BaseModel(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
-# ── Users Model (MAD 1 Class: Users, table: 'user') ───────────────────────────
 class Users(BaseModel):
     __tablename__ = 'user'
 
@@ -20,12 +19,10 @@ class Users(BaseModel):
     name = db.Column(db.String(80), nullable=False)
     email = db.Column(db.String(100), nullable=False, unique=True)
     password = db.Column(db.String(255), nullable=False)
-    role = db.Column(db.String(20), nullable=False, default='user')  # admin, staff, user
+    role = db.Column(db.String(20), nullable=False, default='user')
     is_active = db.Column(db.Boolean, default=True)
 
-    # 1-to-1 relationship with Staff
     staff = db.relationship("Staff", backref="user", uselist=False, cascade="all,delete-orphan")
-    # 1-to-many relationship with Bookings
     bookings = db.relationship("Bookings", backref="user", cascade="all,delete-orphan")
 
     def set_password(self, raw_password):
@@ -46,7 +43,6 @@ class Users(BaseModel):
         }
 
 
-# ── Staff Model (MAD 1 Class: Staff, table: 'staff_profile') ──────────────────
 class Staff(BaseModel):
     __tablename__ = 'staff_profile'
 
@@ -55,13 +51,12 @@ class Staff(BaseModel):
     email = db.Column(db.String(100), nullable=False)
     phone_number = db.Column(db.String(20), nullable=False, default="N/A")
     specialization = db.Column(db.String(100))
-    status = db.Column(db.String(20), default="pending")  # pending, approved, blacklisted
+    status = db.Column(db.String(20), default="pending")
 
     @property
     def role(self):
         return "staff"
 
-    # 1-to-many relationship with Treks
     treks = db.relationship("Treks", backref="assigned_staff", cascade="all,delete-orphan")
 
     def to_dict(self):
@@ -78,24 +73,22 @@ class Staff(BaseModel):
         }
 
 
-# ── Treks Model (MAD 1 Class: Treks, table: 'trek') ───────────────────────────
 class Treks(BaseModel):
     __tablename__ = 'trek'
 
     staff_id = db.Column(db.Integer, db.ForeignKey("staff_profile.id"), nullable=True)
     name = db.Column(db.String(100), nullable=False)
     location = db.Column(db.String(100), nullable=False)
-    difficulty = db.Column(db.String(20), nullable=False)  # Easy, Moderate, Hard
-    duration = db.Column(db.Integer, nullable=False)  # Duration in days
+    difficulty = db.Column(db.String(20), nullable=False)
+    duration = db.Column(db.Integer, nullable=False)
     total_slots = db.Column(db.Integer, nullable=False)
     available_slots = db.Column(db.Integer, nullable=False)
-    status = db.Column(db.String(20), nullable=False, default="upcoming")  # upcoming, ongoing, completed
+    status = db.Column(db.String(20), nullable=False, default="upcoming")
     start_date = db.Column(db.Date, nullable=False)
     end_date = db.Column(db.Date, nullable=False)
     description = db.Column(db.Text)
     price = db.Column(db.Float, default=0.0)
 
-    # 1-to-many relationship with Bookings
     bookings = db.relationship("Bookings", backref="trek", cascade="all,delete-orphan")
 
     def to_dict(self):
@@ -118,15 +111,14 @@ class Treks(BaseModel):
         }
 
 
-# ── Bookings Model (MAD 1 Class: Bookings, table: 'booking') ───────────────────
 class Bookings(BaseModel):
     __tablename__ = 'booking'
 
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     trek_id = db.Column(db.Integer, db.ForeignKey("trek.id"), nullable=False)
     booking_date = db.Column(db.DateTime, default=datetime.utcnow)
-    status = db.Column(db.String(20), nullable=False, default="confirmed")  # pending, confirmed, cancelled
-    payment_status = db.Column(db.String(20), nullable=False, default="Pending")  # Pending, Paid, Refunded
+    status = db.Column(db.String(20), nullable=False, default="confirmed")
+    payment_status = db.Column(db.String(20), nullable=False, default="Pending")
 
     def to_dict(self):
         return {
