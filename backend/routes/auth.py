@@ -114,3 +114,10 @@ def register():
             "message": "User registered successfully! You can now log in.",
             "user": new_user.to_dict()
         }), 201
+
+
+# ── 3. Logout ─────────────────────────────────────────────────────────────────
+@auth_bp.route("/logout", methods=["POST"])
+def logout():
+    """Stateless JWT logout endpoint."""
+    return jsonify({"message": "Successfully logged out"}), 200
