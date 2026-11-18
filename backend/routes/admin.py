@@ -1,10 +1,12 @@
 from functools import wraps
-from flask import request, jsonify
+from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, current_user
 from models.models import db, Users, Treks, Staff, Bookings, User, Trek, StaffProfile, Booking
 from datetime import datetime
+import os
 from cache import cache
-from . import admin_bp
+
+admin_bp = Blueprint("admin_bp", __name__, url_prefix="/admin")
 
 # ── Admin Required Decorator (MAD 1: admin_required) ──────────────────────────
 def admin_required(f):
@@ -493,8 +495,7 @@ def trigger_daily_reminders():
 @admin_bp.route("/reports/files", methods=["GET"])
 @admin_required
 def list_generated_reports():
-    import os
-    backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     reports_folder = os.path.join(backend_dir, "static", "reports")
     files = []
     if os.path.exists(reports_folder):

@@ -1,8 +1,9 @@
-from flask import request, jsonify
+from flask import Blueprint, request, jsonify
 from models.models import db, Users, Staff, User, StaffProfile
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import create_access_token, jwt_required, current_user
-from . import auth_bp
+
+auth_bp = Blueprint("auth_bp", __name__)
 
 # ── 1. Login (MAD 1: login) ───────────────────────────────────────────────────
 @auth_bp.route("/login", methods=["POST"])

@@ -1,10 +1,10 @@
 from functools import wraps
-from flask import request, jsonify
+from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, current_user
 from models.models import db, Users, Treks, Staff, Bookings, User, Trek, StaffProfile, Booking
 from cache import cache
-from . import staff_bp
 
+staff_bp = Blueprint("staff_bp", __name__, url_prefix="/staff")
 
 # ── Staff Required Decorator (MAD 1: staff_required) ──────────────────────────
 def staff_required(f):
