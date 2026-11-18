@@ -1,3 +1,4 @@
+import os
 from flask import Flask, send_from_directory, jsonify
 from models.models import db, Users, Treks, Bookings
 from werkzeug.security import generate_password_hash
@@ -40,12 +41,10 @@ app.register_blueprint(user_bp)
 
 @app.route("/exports/<filename>")
 def download_export(filename):
-    import os
     return send_from_directory(os.path.join(app.root_path, 'static', 'exports'), filename, as_attachment=True)
 
 @app.route("/reports/file/<filename>")
 def download_report(filename):
-    import os
     return send_from_directory(os.path.join(app.root_path, 'static', 'reports'), filename)
 
 @app.route("/public/analytics")
@@ -63,10 +62,6 @@ def public_analytics():
         "featured_treks": featured,
         "popular_treks": popular
     })
-
-@app.route("/api/ping")
-def ping():
-    return jsonify({"status": "ok", "app": "TMA-V2"})
 
 with app.app_context():
     db.create_all()

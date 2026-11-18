@@ -1,17 +1,33 @@
-Python
-Flask
-Vue
-SQLite
-Redis
+# Dependencies
 node_modules/
+frontend/node_modules/
 dist/
+frontend/dist/
+env/
+backend/env/
+venv/
+.env
+
+# Python bytecode & cache
 __pycache__/
+backend/__pycache__/
+backend/models/__pycache__/
+backend/routes/__pycache__/
 *.pyc
+*.pyo
+*.pyd
+
+# Databases & local instances
 instance/
+backend/instance/
 *.sqlite3
 *.db
+
+# Celery
+celerybeat-schedule*
+
+# Dynamic Exports and Reports (keep folder structure via .gitkeep)
 backend/static/exports/*
 !backend/static/exports/.gitkeep
 backend/static/reports/*
 !backend/static/reports/.gitkeep
-celerybeat-schedule*
