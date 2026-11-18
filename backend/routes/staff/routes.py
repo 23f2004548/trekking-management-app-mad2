@@ -1,7 +1,6 @@
 from functools import wraps
 from flask import request, jsonify
 from flask_jwt_extended import jwt_required, current_user
-from role_required import role_required
 from models.models import db, Users, Treks, Staff, Bookings, User, Trek, StaffProfile, Booking
 from cache import cache
 from . import staff_bp
@@ -11,8 +10,9 @@ from . import staff_bp
 def staff_required(f):
     @wraps(f)
     @jwt_required()
-    @role_required("staff")
     def decorated(*args, **kwargs):
+        if not current_user or current_user.role != "staff":
+            return jsonify({"message": "Forbidden: Staff access required"}), 403
         return f(*args, **kwargs)
     return decorated
 
