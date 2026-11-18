@@ -187,11 +187,12 @@ onMounted(() => {
                             <thead class="table-light">
                                 <tr>
                                     <th>Trek Name</th>
+                                    <th>Location</th>
+                                    <th>Difficulty</th>
+                                    <th>Price</th>
                                     <th>Booking Date</th>
                                     <th>Start Date</th>
                                     <th>End Date</th>
-                                    <th>Location</th>
-                                    <th>Difficulty</th>
                                     <th>Guide</th>
                                     <th>Status</th>
                                     <th>Certificate</th>
@@ -200,15 +201,16 @@ onMounted(() => {
                             <tbody>
                                 <tr v-for="item in filteredHistory" :key="item.id">
                                     <td class="fw-semibold">{{ item.trek_name }}</td>
-                                    <td>{{ item.booking_date }}</td>
-                                    <td>{{ item.trek_start_date }}</td>
-                                    <td>{{ item.trek_end_date }}</td>
-                                    <td><i class="bi bi-geo-alt text-danger me-1"></i>{{ item.trek_location }}</td>
+                                    <td><i class="bi bi-geo-alt text-danger me-1"></i>{{ item.trek_location || item.location }}</td>
                                     <td>
-                                        <span v-if="item.trek_difficulty?.toLowerCase() === 'easy'" class="badge bg-success">Easy</span>
-                                        <span v-else-if="item.trek_difficulty?.toLowerCase() === 'moderate'" class="badge bg-warning text-dark">Moderate</span>
-                                        <span v-else class="badge bg-danger">Hard</span>
+                                        <span v-if="(item.trek_difficulty || item.difficulty)?.toLowerCase() === 'easy'" class="badge bg-success">Easy</span>
+                                        <span v-else-if="(item.trek_difficulty || item.difficulty)?.toLowerCase() === 'moderate'" class="badge bg-warning text-dark">Moderate</span>
+                                        <span v-else class="badge bg-danger">{{ item.trek_difficulty || item.difficulty || 'N/A' }}</span>
                                     </td>
+                                    <td class="fw-bold text-success">₹{{ item.trek_price || item.price || 0 }}</td>
+                                    <td>{{ item.booking_date }}</td>
+                                    <td>{{ item.trek_start_date || 'N/A' }}</td>
+                                    <td>{{ item.trek_end_date || item.completion_date || 'N/A' }}</td>
                                     <td>{{ item.staff_name || 'Unassigned' }}</td>
                                     <td>
                                         <span class="badge bg-success">
@@ -222,7 +224,7 @@ onMounted(() => {
                                     </td>
                                 </tr>
                                 <tr v-if="filteredHistory.length === 0">
-                                    <td colspan="9" class="text-center text-muted py-4">
+                                    <td colspan="10" class="text-center text-muted py-4">
                                         <i class="bi bi-clock-history fs-3 d-block mb-2"></i>
                                         No completed treks found. Complete your booked expeditions to view them here!
                                     </td>

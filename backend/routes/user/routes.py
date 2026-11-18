@@ -281,12 +281,17 @@ def history():
             "trek_id": b.trek_id,
             "trek_name": t.name if t else "Unknown",
             "location": t.location if t else "N/A",
+            "trek_location": t.location if t else "N/A",
             "difficulty": t.difficulty if t else "Moderate",
+            "trek_difficulty": t.difficulty if t else "Moderate",
+            "price": t.price if t else 0.0,
+            "trek_price": t.price if t else 0.0,
             "duration": d_val,
             "estimated_km": est_km,
+            "trek_start_date": t.start_date.strftime("%Y-%m-%d") if (t and t.start_date) else None,
+            "trek_end_date": t.end_date.strftime("%Y-%m-%d") if (t and t.end_date) else None,
             "completion_date": t.end_date.strftime("%Y-%m-%d") if (t and t.end_date) else (b.booking_date.strftime("%Y-%m-%d") if b.booking_date else "N/A"),
             "staff_name": t.assigned_staff.name if (t and t.assigned_staff) else "Unassigned",
-            "payment_status": b.payment_status,
             "status": "Completed"
         })
 

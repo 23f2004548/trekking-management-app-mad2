@@ -153,6 +153,8 @@ onBeforeUnmount(() => {
                                 <tr>
                                     <th>Trek Name</th>
                                     <th>Location</th>
+                                    <th>Difficulty</th>
+                                    <th>Price</th>
                                     <th>Booking Date</th>
                                     <th>Start Date</th>
                                     <th>Status</th>
@@ -163,6 +165,12 @@ onBeforeUnmount(() => {
                                 <tr v-for="b in recentBookings" :key="b.id">
                                     <td class="fw-semibold">{{ b.trek_name }}</td>
                                     <td><i class="bi bi-geo-alt text-danger me-1"></i>{{ b.trek_location }}</td>
+                                    <td>
+                                        <span v-if="b.trek_difficulty?.toLowerCase() === 'easy'" class="badge bg-success">Easy</span>
+                                        <span v-else-if="b.trek_difficulty?.toLowerCase() === 'moderate'" class="badge bg-warning text-dark">Moderate</span>
+                                        <span v-else class="badge bg-danger">{{ b.trek_difficulty || 'N/A' }}</span>
+                                    </td>
+                                    <td class="fw-bold text-success">₹{{ b.trek_price }}</td>
                                     <td>{{ b.booking_date }}</td>
                                     <td>{{ b.trek_start_date }}</td>
                                     <td>
@@ -171,7 +179,7 @@ onBeforeUnmount(() => {
                                         <span v-else-if="b.status === 'Completed'" class="badge bg-primary">Completed</span>
                                         <span v-else class="badge bg-warning text-dark">Pending</span>
                                     </td>
-                                    <td>{{ b.staff_name }}</td>
+                                    <td>{{ b.staff_name || 'Unassigned' }}</td>
                                 </tr>
                             </tbody>
                         </table>
