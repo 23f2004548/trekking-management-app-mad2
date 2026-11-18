@@ -5,7 +5,7 @@ from werkzeug.security import generate_password_hash
 from config import LocalDevelopmentConfig
 from flask_cors import CORS
 from security import jwt
-from cache import cache, init_cache
+from cache import cache
 from celery_init_app import celery_init_app
 from celery.schedules import crontab
 from task import monthly_report, daily_reminders
@@ -22,7 +22,7 @@ def create_app(config_class=LocalDevelopmentConfig):
 
     jwt.init_app(application)
     db.init_app(application)
-    init_cache(application)
+    cache.init_app(application)
     CORS(application)
 
     # Register blueprints matching Placement Portal architecture
