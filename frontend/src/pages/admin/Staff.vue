@@ -287,22 +287,3 @@ onMounted(() => {
         </div>
     </div>
 </template>
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold">Phone Number</label>
-                                <input v-model="form.phone_number" type="text" class="form-control" placeholder="10-digit number" />
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold">Specialization</label>
-                                <input v-model="form.specialization" type="text" class="form-control" placeholder="e.g. High Altitude, Rescue" />
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" @click="showModal = false">Cancel</button>
-                            <button type="submit" class="btn btn-primary">Create Staff Account</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-</template>
