@@ -1,0 +1,504 @@
+openapi: 3.0.3
+info:
+  title: Trekking Management Application API
+  description: RESTful API for Trekking Management Application (MAD-2 Project)
+  version: 2.0.0
+servers:
+  - url: http://localhost:5000
+    description: Local Development Server
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        username:
+          type: string
+          example: john_doe
+        name:
+          type: string
+          example: John Doe
+        email:
+          type: string
+          example: john@example.com
+        role:
+          type: string
+          enum: [admin, staff, user]
+          example: user
+        is_active:
+          type: boolean
+          example: true
+
+    StaffProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        user_id:
+          type: integer
+          example: 2
+        name:
+          type: string
+          example: Alex Guide
+        email:
+          type: string
+          example: alex@trek.com
+        phone_number:
+          type: string
+          example: "+91 9876543210"
+        specialization:
+          type: string
+          example: High Altitude Trekking
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+          example: approved
+
+    Trek:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Hampta Pass Trek
+        location:
+          type: string
+          example: Himachal Pradesh
+        difficulty:
+          type: string
+          enum: [Easy, Moderate, Hard]
+          example: Moderate
+        duration:
+          type: integer
+          example: 5
+        total_slots:
+          type: integer
+          example: 20
+        available_slots:
+          type: integer
+          example: 15
+        status:
+          type: string
+          example: upcoming
+        start_date:
+          type: string
+          format: date
+          example: "2026-06-15"
+        end_date:
+          type: string
+          format: date
+          example: "2026-06-20"
+        price:
+          type: number
+          example: 9500.0
+        description:
+          type: string
+          example: Scenic crossover trek from Kullu to Lahaul valley.
+
+    Booking:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 101
+        user_id:
+          type: integer
+          example: 3
+        trek_id:
+          type: integer
+          example: 1
+        booking_date:
+          type: string
+          example: "2026-11-18 10:30"
+        status:
+          type: string
+          enum: [confirmed, cancelled, pending]
+          example: confirmed
+        payment_status:
+          type: string
+          example: Paid
+
+paths:
+  /auth/register:
+    post:
+      summary: Register a new user or staff
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, name, email, password, role]
+              properties:
+                username:
+                  type: string
+                name:
+                  type: string
+                email:
+                  type: string
+                password:
+                  type: string
+                role:
+                  type: string
+                  enum: [user, staff]
+                phone_number:
+                  type: string
+                specialization:
+                  type: string
+      responses:
+        '201':
+          description: User registered successfully
+        '400':
+          description: Validation error or user already exists
+
+  /auth/login:
+    post:
+      summary: User authentication and JWT generation
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login successful, returns JWT access token and user info
+        '401':
+          description: Invalid credentials
+
+  /auth/logout:
+    post:
+      summary: Logout user
+      tags:
+        - Authentication
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successfully logged out
+
+  /user/dashboard:
+    get:
+      summary: Fetch user dashboard metrics and upcoming bookings
+      tags:
+        - User
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User dashboard summary
+
+  /user/treks:
+    get:
+      summary: Browse treks with search and filters
+      tags:
+        - User
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+        - in: query
+          name: difficulty
+          schema:
+            type: string
+            enum: [Easy, Moderate, Hard]
+      responses:
+        '200':
+          description: List of available treks
+
+  /user/book/{trek_id}:
+    post:
+      summary: Book a slot for a trek
+      tags:
+        - User
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: trek_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '201':
+          description: Trek booked successfully
+        '400':
+          description: No slots available or already booked
+
+  /user/bookings:
+    get:
+      summary: List all active bookings for current user
+      tags:
+        - User
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User bookings
+
+  /user/bookings/{booking_id}/cancel:
+    post:
+      summary: Cancel a trek booking
+      tags:
+        - User
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: booking_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Booking cancelled and slot restored
+
+  /user/history:
+    get:
+      summary: Fetch user completed and cancelled trek history
+      tags:
+        - User
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Trek booking history
+
+  /user/export/csv:
+    post:
+      summary: Trigger async Celery task to export booking logs as CSV
+      tags:
+        - User
+      security:
+        - bearerAuth: []
+      responses:
+        '202':
+          description: Export task initiated
+
+  /staff/dashboard:
+    get:
+      summary: Fetch staff dashboard statistics
+      tags:
+        - Staff
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Staff dashboard summary
+
+  /staff/treks:
+    get:
+      summary: List treks assigned to current staff member
+      tags:
+        - Staff
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Assigned treks
+
+  /staff/treks/{trek_id}:
+    put:
+      summary: Update status of an assigned trek
+      tags:
+        - Staff
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: trek_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Trek updated
+
+  /staff/treks/{trek_id}/participants:
+    get:
+      summary: Get participants list for an assigned trek
+      tags:
+        - Staff
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: trek_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of participants
+
+  /admin/dashboard:
+    get:
+      summary: Fetch admin system overview and statistics
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Admin dashboard metrics
+
+  /admin/treks:
+    get:
+      summary: List all treks
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: All treks
+    post:
+      summary: Create a new trek
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Trek'
+      responses:
+        '201':
+          description: Trek created successfully
+
+  /admin/treks/{trek_id}:
+    put:
+      summary: Edit trek details
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: trek_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Trek updated
+    delete:
+      summary: Delete trek
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: trek_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Trek deleted
+
+  /admin/staff:
+    get:
+      summary: List staff members with pending/approved status
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of staff profiles
+
+  /admin/staff/{staff_id}/toggle-status:
+    post:
+      summary: Approve or reject staff application
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: staff_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Staff status updated
+
+  /admin/users:
+    get:
+      summary: List registered users
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User accounts
+
+  /admin/users/{user_id}/toggle-active:
+    post:
+      summary: Activate or deactivate user account
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: user_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Account status toggled
+
+  /admin/bookings:
+    get:
+      summary: List all system bookings with status filtering
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: All bookings
+
+  /admin/reports:
+    get:
+      summary: Fetch aggregated analytics for charts (overview, booking status, difficulty)
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Analytics data for admin reports

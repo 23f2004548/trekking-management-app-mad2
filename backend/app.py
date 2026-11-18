@@ -45,22 +45,6 @@ def download_export(filename):
 def download_report(filename):
     return send_from_directory(os.path.join(app.root_path, 'static', 'reports'), filename)
 
-@app.route("/public/analytics")
-def public_analytics():
-    treks = Treks.query.all()
-    upcoming_count = Treks.query.filter(Treks.status.ilike("upcoming")).count()
-    completed_count = Treks.query.filter(Treks.status.ilike("completed")).count()
-    trekkers = Bookings.query.filter(Bookings.status.ilike("confirmed")).count()
-    counts = [Treks.query.filter(Treks.status.ilike("upcoming"), Treks.difficulty.ilike(d)).count() for d in ["Easy", "Moderate", "Hard"]]
-    featured = [t.to_dict() for t in Treks.query.filter(Treks.status.ilike("upcoming")).limit(3)]
-    popular = [{"name": t.name, "bookings": len(t.bookings)} for t in sorted(treks, key=lambda t: len(t.bookings), reverse=True)[:5]]
-    return jsonify({
-        "metrics": {"open_treks": upcoming_count, "completed_expeditions": completed_count, "trekkers_served": trekkers},
-        "difficulty_breakdown": {"labels": ["Easy", "Moderate", "Hard"], "counts": counts},
-        "featured_treks": featured,
-        "popular_treks": popular
-    })
-
 with app.app_context():
     db.create_all()
     if not Users.query.filter_by(role="admin").first():
