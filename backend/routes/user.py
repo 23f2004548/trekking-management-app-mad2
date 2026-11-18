@@ -276,11 +276,6 @@ def profile():
     d["completed_treks"] = completed
     return jsonify({"user": d}), 200
 
-    d = current_user.to_dict()
-    d["total_bookings"] = total_bookings
-    d["completed_treks"] = completed
-    return jsonify({"user": d}), 200
-
 
 # ── 8. Celery CSV Export ──────────────────────────────────────────────────────
 @user_bp.route("/export/csv", methods=["POST"])
