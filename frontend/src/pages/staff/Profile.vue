@@ -54,23 +54,20 @@ onMounted(() => {
 
 <template>
     <div class="container py-4" style="max-width: 600px;">
-        <h2 class="fw-bold mb-1">My Staff Profile</h2>
-        <p class="text-muted small mb-4">View and update your guide contact information</p>
+        <h3 class="fw-bold mb-3">My Staff Profile</h3>
 
-        <div v-if="success" class="alert alert-success py-2 small alert-dismissible">
+        <div v-if="success" class="alert py-2 px-3 small border-0 mb-3" style="background-color: #d1f4ff; color: #055160;">
             {{ success }}
-            <button type="button" class="btn-close btn-sm" @click="success = ''"></button>
         </div>
-        <div v-if="error" class="alert alert-danger py-2 small alert-dismissible">
+        <div v-if="error" class="alert alert-danger py-2 px-3 small border-0 mb-3">
             {{ error }}
-            <button type="button" class="btn-close btn-sm" @click="error = ''"></button>
         </div>
 
         <div v-if="loading" class="text-center py-5">
             <div class="spinner-border text-primary" role="status"></div>
         </div>
 
-        <div v-else class="card p-4 shadow-sm border-0">
+        <div v-else class="card p-4 shadow-sm border">
             <form @submit.prevent="saveProfile">
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Full Name</label>
@@ -92,12 +89,14 @@ onMounted(() => {
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Staff Status</label>
                     <div>
-                        <span class="badge" :class="profile.status === 'active' ? 'bg-success' : 'bg-danger'">
-                            {{ profile.status }}
+                        <span
+                            class="badge rounded-pill px-3 py-1"
+                            :class="profile.status?.toLowerCase() === 'approved' ? 'bg-success' : (profile.status?.toLowerCase() === 'pending' ? 'bg-warning text-dark' : 'bg-danger')"
+                        >
+                            {{ profile.status?.toLowerCase() === 'pending' ? 'Pending' : (profile.status?.toLowerCase() === 'approved' ? 'Approved' : 'Blacklisted') }}
                         </span>
                     </div>
                 </div>
-
                 <button type="submit" class="btn btn-primary w-100 py-2 mt-2">Save Profile Changes</button>
             </form>
         </div>

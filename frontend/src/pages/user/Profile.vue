@@ -1,9 +1,7 @@
 <script setup>
 import { ref, onMounted } from "vue"
-import { useRouter } from "vue-router"
 import axios from "axios"
 
-const router = useRouter()
 const BASE_URL = "http://localhost:5000"
 const token = localStorage.getItem("token")
 
