@@ -129,34 +129,45 @@ def edit_trek(trek_id):
 
 
 # ── 4. Participants ───────────────────────────────────────────────────────────
+@staff_bp.route("/participants", methods=["GET"])
 @staff_bp.route("/treks/<int:trek_id>/participants", methods=["GET"])
 @staff_required
-def participants(trek_id):
+def participants(trek_id=None):
     staff_member = get_current_staff()
     if not staff_member:
         return jsonify({"message": "Staff profile not found"}), 404
 
-    trek = Treks.query.get_or_404(trek_id)
-    if trek.staff_id != staff_member.id:
-        return jsonify({"message": "Forbidden: You are not assigned to this trek"}), 403
-
-    trek_bookings = Bookings.query.filter_by(trek_id=trek.id).order_by(Bookings.booking_date.asc()).all()
-    part_list = []
-    for b in trek_bookings:
-        part_list.append({
+    if trek_id is not None:
+        trek = Treks.query.get_or_404(trek_id)
+        if trek.staff_id != staff_member.id:
+            return jsonify({"message": "Forbidden: You are not assigned to this trek"}), 403
+        bookings = Bookings.query.filter_by(trek_id=trek.id).order_by(Bookings.booking_date.asc()).all()
+        part_list = [{
             "booking_id": b.id,
-            "user_id": b.user_id,
             "user_name": b.user.name if b.user else "N/A",
             "user_email": b.user.email if b.user else "N/A",
-            "user_username": b.user.username if b.user else "N/A",
-            "booking_date": b.booking_date.strftime("%Y-%m-%d %H:%M") if b.booking_date else None,
-            "status": b.status,
-            "payment_status": b.payment_status
+            "booking_date": b.booking_date.strftime("%Y-%m-%d %H:%M:%S") if b.booking_date else "N/A",
+            "status": b.status
+        } for b in bookings]
+        return jsonify({"trek": trek.to_dict(), "participants": part_list}), 200
+
+    my_treks = Treks.query.filter_by(staff_id=staff_member.id).order_by(Treks.start_date.asc()).all()
+    results = []
+    for t in my_treks:
+        bookings = Bookings.query.filter_by(trek_id=t.id).order_by(Bookings.booking_date.asc()).all()
+        part_list = [{
+            "booking_id": b.id,
+            "user_name": b.user.name if b.user else "N/A",
+            "user_email": b.user.email if b.user else "N/A",
+            "booking_date": b.booking_date.strftime("%Y-%m-%d %H:%M:%S") if b.booking_date else "N/A",
+            "status": b.status
+        } for b in bookings]
+        results.append({
+            "trek_id": t.id,
+            "trek_name": t.name,
+            "participants": part_list
         })
-    return jsonify({
-        "trek": trek.to_dict(),
-        "participants": part_list
-    }), 200
+    return jsonify(results), 200
 
 
 # ── 5. Manage Participant Status ──────────────────────────────────────────────
