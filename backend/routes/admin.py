@@ -1,14 +1,14 @@
 from functools import wraps
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, current_user
-from models.models import db, Users, Treks, Staff, Bookings, User, Trek, StaffProfile, Booking
+from models.models import db, Users, Treks, Staff, Bookings
 from datetime import datetime
 import os
 from cache import cache
 
 admin_bp = Blueprint("admin_bp", __name__, url_prefix="/admin")
 
-# ── Admin Required Decorator (MAD 1: admin_required) ──────────────────────────
+# ── Admin Required Decorator ──────────────────────────────────────────────────
 def admin_required(f):
     @wraps(f)
     @jwt_required()
@@ -19,7 +19,7 @@ def admin_required(f):
     return decorated
 
 
-# ── 1. Dashboard Stats (MAD 1: dashboard) ──────────────────────────────────────
+# ── 1. Dashboard Stats ────────────────────────────────────────────────────────
 @admin_bp.route("/dashboard", methods=["GET"])
 @admin_required
 @cache.cached(timeout=60)
@@ -45,7 +45,7 @@ def dashboard():
     }), 200
 
 
-# ── 2. Treks Management (MAD 1: treks, add_trek, edit_trek, delete_trek) ──────
+# ── 2. Treks Management ───────────────────────────────────────────────────────
 @admin_bp.route("/treks", methods=["GET"])
 @admin_required
 @cache.cached(timeout=60)
@@ -53,12 +53,8 @@ def treks():
     all_treks = Treks.query.order_by(Treks.created_at.desc()).all()
     return jsonify([t.to_dict() for t in all_treks]), 200
 
-# Alias for backwards compatibility
-get_all_treks = treks
-
 
 @admin_bp.route("/treks", methods=["POST"])
-@admin_bp.route("/add_treks", methods=["POST"])
 @admin_required
 def add_trek():
     data = request.get_json() or {}
@@ -86,8 +82,7 @@ def add_trek():
         return jsonify({"message": str(e)}), 400
 
 
-@admin_bp.route("/treks/<int:trek_id>", methods=["PUT", "POST"])
-@admin_bp.route("/treks/edit/<int:trek_id>", methods=["PUT", "POST"])
+@admin_bp.route("/treks/<int:trek_id>", methods=["PUT"])
 @admin_required
 def edit_trek(trek_id):
     trek = Treks.query.get_or_404(trek_id)
@@ -121,12 +116,8 @@ def edit_trek(trek_id):
         db.session.rollback()
         return jsonify({"message": str(e)}), 400
 
-# Alias for backwards compatibility
-update_trek = edit_trek
-
 
 @admin_bp.route("/treks/<int:trek_id>", methods=["DELETE"])
-@admin_bp.route("/treks/delete/<int:trek_id>", methods=["DELETE", "POST"])
 @admin_required
 def delete_trek(trek_id):
     trek = Treks.query.get_or_404(trek_id)
@@ -136,7 +127,7 @@ def delete_trek(trek_id):
     return jsonify({"message": "Trek deleted successfully"}), 200
 
 
-# ── 3. Staff Management (MAD 1: staff, change_staff_status) ────────────────────
+# ── 3. Staff Management ───────────────────────────────────────────────────────
 @admin_bp.route("/staff", methods=["GET"])
 @admin_required
 @cache.cached(timeout=60)
@@ -147,9 +138,6 @@ def staff():
         query = query.filter_by(status=status)
     staff_list = query.order_by(Staff.created_at.desc()).all()
     return jsonify([s.to_dict() for s in staff_list]), 200
-
-# Alias for backwards compatibility
-get_all_staff = staff
 
 
 @admin_bp.route("/staff", methods=["POST"])
@@ -199,23 +187,17 @@ def add_staff():
 
 
 @admin_bp.route("/staff/<int:staff_id>/toggle-status", methods=["POST"])
-@admin_bp.route("/staff/status/<int:staff_id>/<string:status>", methods=["POST"])
 @admin_required
-def change_staff_status(staff_id, status=None):
+def change_staff_status(staff_id):
     staff_member = Staff.query.get_or_404(staff_id)
-    if status:
-        staff_member.status = status
+    if staff_member.status == "active":
+        staff_member.status = "blacklisted"
         if staff_member.user:
-            staff_member.user.is_active = (status.lower() == "approved" or status.lower() == "active")
+            staff_member.user.is_active = False
     else:
-        if staff_member.status == "active":
-            staff_member.status = "blacklisted"
-            if staff_member.user:
-                staff_member.user.is_active = False
-        else:
-            staff_member.status = "active"
-            if staff_member.user:
-                staff_member.user.is_active = True
+        staff_member.status = "active"
+        if staff_member.user:
+            staff_member.user.is_active = True
 
     db.session.commit()
     cache.clear()
@@ -223,9 +205,6 @@ def change_staff_status(staff_id, status=None):
         "message": f"Staff status updated to {staff_member.status}",
         "staff": staff_member.to_dict()
     }), 200
-
-# Alias for backwards compatibility
-toggle_staff_status = change_staff_status
 
 
 @admin_bp.route("/staff/<int:staff_id>", methods=["DELETE"])
@@ -241,16 +220,13 @@ def delete_staff(staff_id):
     return jsonify({"message": "Staff member deleted successfully"}), 200
 
 
-# ── 4. Users Management (MAD 1: users, delete_user) ───────────────────────────
+# ── 4. Users Management ───────────────────────────────────────────────────────
 @admin_bp.route("/users", methods=["GET"])
 @admin_required
 @cache.cached(timeout=60)
 def users():
     all_users = Users.query.filter_by(role="user").order_by(Users.created_at.desc()).all()
     return jsonify([u.to_dict() for u in all_users]), 200
-
-# Alias for backwards compatibility
-get_all_users = users
 
 
 @admin_bp.route("/users/<int:user_id>/toggle-active", methods=["POST"])
@@ -270,7 +246,6 @@ def toggle_user_active(user_id):
 
 
 @admin_bp.route("/users/<int:user_id>", methods=["DELETE"])
-@admin_bp.route("/users/delete/<int:user_id>", methods=["POST", "DELETE"])
 @admin_required
 def delete_user(user_id):
     user = Users.query.get_or_404(user_id)
@@ -282,7 +257,7 @@ def delete_user(user_id):
     return jsonify({"message": "User deleted successfully"}), 200
 
 
-# ── 5. Bookings Management (MAD 1: bookings, change_booking_status) ───────────
+# ── 5. Bookings Management ────────────────────────────────────────────────────
 @admin_bp.route("/bookings", methods=["GET"])
 @admin_required
 def bookings():
@@ -309,20 +284,13 @@ def bookings():
     all_bookings = query.order_by(Bookings.booking_date.desc()).all()
     return jsonify([b.to_dict() for b in all_bookings]), 200
 
-# Alias for backwards compatibility
-get_all_bookings = bookings
-
 
 @admin_bp.route("/bookings/<int:booking_id>/status", methods=["POST"])
-@admin_bp.route("/bookings/status/<int:booking_id>/<string:status>", methods=["POST"])
 @admin_required
-def change_booking_status(booking_id, status=None):
+def change_booking_status(booking_id):
     booking = Bookings.query.get_or_404(booking_id)
-    if not status:
-        data = request.get_json() or {}
-        new_status = data.get("status")
-    else:
-        new_status = status.capitalize()
+    data = request.get_json() or {}
+    new_status = data.get("status", "").capitalize()
 
     if new_status not in ["Pending", "Booked", "Confirmed", "Cancelled", "Completed"]:
         return jsonify({"message": "Invalid booking status"}), 400
@@ -340,11 +308,8 @@ def change_booking_status(booking_id, status=None):
     cache.clear()
     return jsonify({"message": "Booking status updated successfully", "booking": booking.to_dict()}), 200
 
-# Alias for backwards compatibility
-update_booking_status = change_booking_status
 
-
-# ── 6. Search (MAD 1: search) ──────────────────────────────────────────────────
+# ── 6. Search ─────────────────────────────────────────────────────────────────
 @admin_bp.route("/search", methods=["GET"])
 @admin_required
 def search():
@@ -381,7 +346,7 @@ def search():
     return jsonify({"treks": treks_res, "users": users_res, "staff": staff_res}), 200
 
 
-# ── 7. Reports (MAD 1: reports) ────────────────────────────────────────────────
+# ── 7. Reports ────────────────────────────────────────────────────────────────
 @admin_bp.route("/reports", methods=["GET"])
 @admin_required
 @cache.cached(timeout=60)
@@ -432,27 +397,7 @@ def reports():
     }), 200
 
 
-# ── 8. Profile (MAD 1: profile) ────────────────────────────────────────────────
-@admin_bp.route("/profile", methods=["GET", "POST", "PUT"])
-@admin_required
-def profile():
-    if request.method in ["POST", "PUT"]:
-        data = request.get_json() or {}
-        name = data.get("name")
-        email = data.get("email")
-        if email:
-            existing = Users.query.filter_by(email=email).first()
-            if existing and existing.id != current_user.id:
-                return jsonify({"message": "Email already taken"}), 400
-            current_user.email = email
-        if name:
-            current_user.name = name
-        db.session.commit()
-        return jsonify({"message": "Profile updated successfully", "user": current_user.to_dict()}), 200
-    return jsonify({"user": current_user.to_dict()}), 200
-
-
-# ── 9. Celery Batch Jobs (Milestone 7) ─────────────────────────────────────────
+# ── 8. Celery Batch Jobs ──────────────────────────────────────────────────────
 @admin_bp.route("/jobs/monthly-report", methods=["POST"])
 @admin_required
 def trigger_monthly_report():
@@ -508,7 +453,7 @@ def list_generated_reports():
     return jsonify({"reports": files}), 200
 
 
-# ── 10. Redis Cache Control (Milestone 8) ──────────────────────────────────────
+# ── 9. Cache Control ──────────────────────────────────────────────────────────
 @admin_bp.route("/cache/clear", methods=["POST"])
 @admin_required
 def clear_api_cache():

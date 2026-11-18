@@ -1,12 +1,12 @@
 from functools import wraps
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, current_user
-from models.models import db, Users, Treks, Staff, Bookings, User, Trek, StaffProfile, Booking
+from models.models import db, Users, Treks, Bookings
 from cache import cache
 
 user_bp = Blueprint("user_bp", __name__, url_prefix="/user")
 
-# ── User Required Decorator (MAD 1: user_required) ────────────────────────────
+# ── User Required Decorator ───────────────────────────────────────────────────
 def user_required(f):
     @wraps(f)
     @jwt_required()
@@ -17,7 +17,7 @@ def user_required(f):
     return decorated
 
 
-# ── 1. User Dashboard (MAD 1: dashboard) ──────────────────────────────────────
+# ── 1. User Dashboard ─────────────────────────────────────────────────────────
 @user_bp.route("/dashboard", methods=["GET"])
 @user_required
 def dashboard():
@@ -42,7 +42,6 @@ def dashboard():
                 hard += 1
 
     recent = Bookings.query.filter_by(user_id=current_user.id).order_by(Bookings.booking_date.desc()).limit(5).all()
-    recent_bookings = [b.to_dict() for b in recent]
 
     return jsonify({
         "stats": {
@@ -54,13 +53,12 @@ def dashboard():
             "diff_labels": ["Easy", "Moderate", "Hard"],
             "diff_counts": [easy, moderate, hard]
         },
-        "recent_bookings": recent_bookings,
+        "recent_bookings": [b.to_dict() for b in recent],
         "user_name": current_user.name
     }), 200
 
 
-# ── 2. Browse Treks (MAD 1: browse) ───────────────────────────────────────────
-@user_bp.route("/browse", methods=["GET"])
+# ── 2. Browse Treks ───────────────────────────────────────────────────────────
 @user_bp.route("/treks", methods=["GET"])
 @user_required
 def browse():
@@ -92,11 +90,8 @@ def browse():
 
     return jsonify({"treks": trek_list}), 200
 
-# Alias for backwards compatibility
-browse_treks = browse
 
-
-# ── 3. Book Trek (MAD 1: book_trek) ───────────────────────────────────────────
+# ── 3. Book Trek ──────────────────────────────────────────────────────────────
 @user_bp.route("/book/<int:trek_id>", methods=["POST"])
 @user_required
 def book_trek(trek_id):
@@ -137,27 +132,7 @@ def book_trek(trek_id):
     }), 201
 
 
-def serialize_booking_with_tracking(b):
-    d = b.to_dict()
-    if b.status == "Cancelled":
-        d["tracking_stage"] = 0
-        d["tracking_label"] = "Cancelled"
-    elif b.status == "Completed" or (b.trek and b.trek.status == "Completed"):
-        d["tracking_stage"] = 4
-        d["tracking_label"] = "Completed / Summit Achieved"
-    elif b.trek and b.trek.status == "Ongoing":
-        d["tracking_stage"] = 3
-        d["tracking_label"] = "Ongoing Expedition"
-    elif b.trek and b.trek.status == "Started":
-        d["tracking_stage"] = 2
-        d["tracking_label"] = "Expedition Started"
-    else:
-        d["tracking_stage"] = 1
-        d["tracking_label"] = "Confirmed & Scheduled"
-    return d
-
-
-# ── 4. My Bookings (MAD 1: bookings) ──────────────────────────────────────────
+# ── 4. My Bookings ────────────────────────────────────────────────────────────
 @user_bp.route("/bookings", methods=["GET"])
 @user_required
 def bookings():
@@ -168,28 +143,11 @@ def bookings():
         query = query.filter(Bookings.status.ilike(status_filter))
 
     user_bookings = query.order_by(Bookings.booking_date.desc()).all()
-    return jsonify({"bookings": [serialize_booking_with_tracking(b) for b in user_bookings]}), 200
-
-# Alias for backwards compatibility
-get_user_bookings = bookings
+    return jsonify({"bookings": [b.to_dict() for b in user_bookings]}), 200
 
 
-@user_bp.route("/bookings/<int:booking_id>", methods=["GET"])
-@user_required
-def get_booking_detail(booking_id):
-    booking = Bookings.query.get(booking_id)
-    if not booking:
-        return jsonify({"message": "Booking not found"}), 404
-
-    if booking.user_id != current_user.id:
-        return jsonify({"message": "Forbidden: You can only view your own bookings"}), 403
-
-    return jsonify({"booking": serialize_booking_with_tracking(booking)}), 200
-
-
-# ── 5. Cancel Booking (MAD 1: cancel_booking) ─────────────────────────────────
+# ── 5. Cancel Booking ─────────────────────────────────────────────────────────
 @user_bp.route("/bookings/<int:booking_id>/cancel", methods=["POST"])
-@user_bp.route("/bookings/cancel/<int:booking_id>", methods=["POST"])
 @user_required
 def cancel_booking(booking_id):
     booking = Bookings.query.get(booking_id)
@@ -214,41 +172,11 @@ def cancel_booking(booking_id):
 
     return jsonify({
         "message": "Booking cancelled successfully",
-        "booking": serialize_booking_with_tracking(booking)
+        "booking": booking.to_dict()
     }), 200
 
 
-# ── 6. Payment Simulation (Enhancement 2) ─────────────────────────────────────
-@user_bp.route("/bookings/<int:booking_id>/pay", methods=["POST"])
-@user_required
-def simulate_payment(booking_id):
-    booking = Bookings.query.get(booking_id)
-    if not booking:
-        return jsonify({"message": "Booking not found"}), 404
-
-    if booking.user_id != current_user.id:
-        return jsonify({"message": "Forbidden"}), 403
-
-    if booking.status == "Cancelled":
-        return jsonify({"message": "Cannot pay for a cancelled booking"}), 400
-
-    if booking.payment_status == "Paid":
-        return jsonify({"message": "Booking is already paid"}), 400
-
-    data = request.get_json() or {}
-    payment_method = data.get("method", "UPI")
-
-    booking.payment_status = "Paid"
-    db.session.commit()
-    cache.clear()
-
-    return jsonify({
-        "message": f"Payment simulated successfully via {payment_method}! Booking confirmed.",
-        "booking": serialize_booking_with_tracking(booking)
-    }), 200
-
-
-# ── 7. Trekking History (MAD 1: history) ───────────────────────────────────────
+# ── 6. Trekking History ───────────────────────────────────────────────────────
 @user_bp.route("/history", methods=["GET"])
 @user_required
 def history():
@@ -281,11 +209,8 @@ def history():
             "trek_id": b.trek_id,
             "trek_name": t.name if t else "Unknown",
             "location": t.location if t else "N/A",
-            "trek_location": t.location if t else "N/A",
             "difficulty": t.difficulty if t else "Moderate",
-            "trek_difficulty": t.difficulty if t else "Moderate",
             "price": t.price if t else 0.0,
-            "trek_price": t.price if t else 0.0,
             "duration": d_val,
             "estimated_km": est_km,
             "trek_start_date": t.start_date.strftime("%Y-%m-%d") if (t and t.start_date) else None,
@@ -305,11 +230,11 @@ def history():
     }), 200
 
 
-# ── 8. Profile Management (MAD 1: profile) ────────────────────────────────────
-@user_bp.route("/profile", methods=["GET", "POST", "PUT"])
+# ── 7. Profile Management ─────────────────────────────────────────────────────
+@user_bp.route("/profile", methods=["GET", "PUT"])
 @user_required
 def profile():
-    if request.method in ["POST", "PUT"]:
+    if request.method == "PUT":
         data = request.get_json() or {}
         name = data.get("name", "").strip()
         email = data.get("email", "").strip()
@@ -337,12 +262,8 @@ def profile():
     d["completed_treks"] = completed
     return jsonify({"user": d}), 200
 
-# Aliases for backwards compatibility
-get_profile = profile
-update_profile = profile
 
-
-# ── 9. Celery CSV Export (Milestone 7) ─────────────────────────────────────────
+# ── 8. Celery CSV Export ──────────────────────────────────────────────────────
 @user_bp.route("/export/csv", methods=["POST"])
 @user_required
 def trigger_csv_export():

@@ -1,12 +1,12 @@
 from functools import wraps
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, current_user
-from models.models import db, Users, Treks, Staff, Bookings, User, Trek, StaffProfile, Booking
+from models.models import db, Treks, Staff, Bookings
 from cache import cache
 
 staff_bp = Blueprint("staff_bp", __name__, url_prefix="/staff")
 
-# ── Staff Required Decorator (MAD 1: staff_required) ──────────────────────────
+# ── Staff Required Decorator ──────────────────────────────────────────────────
 def staff_required(f):
     @wraps(f)
     @jwt_required()
@@ -18,13 +18,13 @@ def staff_required(f):
 
 
 def get_current_staff():
-    """Helper to retrieve the authenticated staff profile."""
+    """Helper to retrieve authenticated staff profile."""
     if not current_user:
         return None
     return Staff.query.filter_by(user_id=current_user.id).first()
 
 
-# ── 1. Staff Dashboard (MAD 1: dashboard) ──────────────────────────────────────
+# ── 1. Staff Dashboard ────────────────────────────────────────────────────────
 @staff_bp.route("/dashboard", methods=["GET"])
 @staff_required
 @cache.cached(timeout=60)
@@ -69,7 +69,7 @@ def dashboard():
     }), 200
 
 
-# ── 2. Assigned Treks (MAD 1: treks) ──────────────────────────────────────────
+# ── 2. Assigned Treks ─────────────────────────────────────────────────────────
 @staff_bp.route("/treks", methods=["GET"])
 @staff_required
 def treks():
@@ -85,13 +85,9 @@ def treks():
         result.append(d)
     return jsonify(result), 200
 
-# Alias for backwards compatibility
-get_my_treks = treks
 
-
-# ── 3. Edit Trek (MAD 1: edit_trek) ───────────────────────────────────────────
-@staff_bp.route("/treks/<int:trek_id>", methods=["PUT", "POST"])
-@staff_bp.route("/treks/edit/<int:trek_id>", methods=["PUT", "POST"])
+# ── 3. Edit Trek ──────────────────────────────────────────────────────────────
+@staff_bp.route("/treks/<int:trek_id>", methods=["PUT"])
 @staff_required
 def edit_trek(trek_id):
     staff_member = get_current_staff()
@@ -131,53 +127,36 @@ def edit_trek(trek_id):
         "trek": trek.to_dict()
     }), 200
 
-# Alias for backwards compatibility
-update_my_trek = edit_trek
 
-
-# ── 4. Participants (MAD 1: participants) ──────────────────────────────────────
+# ── 4. Participants ───────────────────────────────────────────────────────────
 @staff_bp.route("/treks/<int:trek_id>/participants", methods=["GET"])
-@staff_bp.route("/participants", methods=["GET"])
 @staff_required
-def participants(trek_id=None):
+def participants(trek_id):
     staff_member = get_current_staff()
     if not staff_member:
         return jsonify({"message": "Staff profile not found"}), 404
 
-    if trek_id is None:
-        t_id = request.args.get("trek_id")
-        if t_id:
-            trek_id = int(t_id)
+    trek = Treks.query.get_or_404(trek_id)
+    if trek.staff_id != staff_member.id:
+        return jsonify({"message": "Forbidden: You are not assigned to this trek"}), 403
 
-    if trek_id:
-        trek = Treks.query.get_or_404(trek_id)
-        if trek.staff_id != staff_member.id:
-            return jsonify({"message": "Forbidden: You are not assigned to this trek"}), 403
-
-        trek_bookings = Bookings.query.filter_by(trek_id=trek.id).order_by(Bookings.booking_date.asc()).all()
-        part_list = []
-        for b in trek_bookings:
-            part_list.append({
-                "booking_id": b.id,
-                "user_id": b.user_id,
-                "user_name": b.user.name if b.user else "N/A",
-                "user_email": b.user.email if b.user else "N/A",
-                "user_username": b.user.username if b.user else "N/A",
-                "booking_date": b.booking_date.strftime("%Y-%m-%d %H:%M") if b.booking_date else None,
-                "status": b.status,
-                "payment_status": b.payment_status
-            })
-        return jsonify({
-            "trek": trek.to_dict(),
-            "participants": part_list
-        }), 200
-    else:
-        # Return all assigned treks with their participant lists
-        my_treks = Treks.query.filter_by(staff_id=staff_member.id).all()
-        return jsonify({"treks": [t.to_dict() for t in my_treks]}), 200
-
-# Alias for backwards compatibility
-get_trek_participants = participants
+    trek_bookings = Bookings.query.filter_by(trek_id=trek.id).order_by(Bookings.booking_date.asc()).all()
+    part_list = []
+    for b in trek_bookings:
+        part_list.append({
+            "booking_id": b.id,
+            "user_id": b.user_id,
+            "user_name": b.user.name if b.user else "N/A",
+            "user_email": b.user.email if b.user else "N/A",
+            "user_username": b.user.username if b.user else "N/A",
+            "booking_date": b.booking_date.strftime("%Y-%m-%d %H:%M") if b.booking_date else None,
+            "status": b.status,
+            "payment_status": b.payment_status
+        })
+    return jsonify({
+        "trek": trek.to_dict(),
+        "participants": part_list
+    }), 200
 
 
 # ── 5. Manage Participant Status ──────────────────────────────────────────────
@@ -216,15 +195,15 @@ def update_participant_status(trek_id, booking_id):
     }), 200
 
 
-# ── 6. Staff Profile (MAD 1: profile) ──────────────────────────────────────────
-@staff_bp.route("/profile", methods=["GET", "POST", "PUT"])
+# ── 6. Staff Profile ──────────────────────────────────────────────────────────
+@staff_bp.route("/profile", methods=["GET", "PUT"])
 @staff_required
 def profile():
     staff_member = get_current_staff()
     if not staff_member:
         return jsonify({"message": "Staff profile not found"}), 404
 
-    if request.method in ["POST", "PUT"]:
+    if request.method == "PUT":
         data = request.get_json() or {}
         if "name" in data:
             staff_member.name = data["name"].strip()
@@ -239,7 +218,3 @@ def profile():
         return jsonify({"message": "Profile updated successfully", "staff": staff_member.to_dict()}), 200
 
     return jsonify(staff_member.to_dict()), 200
-
-# Aliases for backwards compatibility
-get_profile = profile
-update_profile = profile

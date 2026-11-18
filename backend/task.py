@@ -1,5 +1,5 @@
 from celery import shared_task
-from models.models import db, User, Booking, Trek
+from models.models import db, Users, Bookings, Treks
 import csv
 import os
 from datetime import datetime, date, timedelta
@@ -10,7 +10,7 @@ BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 # 1. User CSV Export
 @shared_task(ignore_result=False, name="download_csv")
 def download_csv(user_id):
-    user = User.query.get(user_id)
+    user = Users.query.get(user_id)
     if not user:
         return "User not found"
 
@@ -19,7 +19,7 @@ def download_csv(user_id):
     filename = f"trekking_history_user_{user_id}.csv"
     filepath = os.path.join(static_folder, filename)
 
-    bookings = Booking.query.filter_by(user_id=user_id).order_by(Booking.booking_date.desc()).all()
+    bookings = Bookings.query.filter_by(user_id=user_id).order_by(Bookings.booking_date.desc()).all()
 
     with open(filepath, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
@@ -39,13 +39,13 @@ def download_csv(user_id):
 # 2. Monthly Activity Report for Admin
 @shared_task(name="monthly_report")
 def monthly_report():
-    admin = User.query.filter_by(role="admin").first()
+    admin = Users.query.filter_by(role="admin").first()
     if not admin:
         return "No admin found"
 
-    total_treks = Trek.query.count()
-    completed_treks = Trek.query.filter_by(status="Completed").count()
-    total_bookings = Booking.query.count()
+    total_treks = Treks.query.count()
+    completed_treks = Treks.query.filter_by(status="Completed").count()
+    total_bookings = Bookings.query.count()
 
     html_content = f"""
     <html>
@@ -81,13 +81,13 @@ def daily_reminders():
     today = date.today()
     window = today + timedelta(days=2)
 
-    upcoming = Trek.query.filter(Trek.start_date >= today, Trek.start_date <= window).all()
+    upcoming = Treks.query.filter(Treks.start_date >= today, Treks.start_date <= window).all()
     if not upcoming:
         return "No upcoming treks today"
 
     sent_count = 0
     for trek in upcoming:
-        bookings = Booking.query.filter_by(trek_id=trek.id).filter(Booking.status.in_(["Booked", "Confirmed"])).all()
+        bookings = Bookings.query.filter_by(trek_id=trek.id).filter(Bookings.status.in_(["Booked", "Confirmed"])).all()
         for b in bookings:
             if b.user and b.user.email:
                 msg = f"Hello {b.user.name}, your trek '{trek.name}' starts on {trek.start_date}. Be prepared!"

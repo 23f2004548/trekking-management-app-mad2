@@ -1,18 +1,12 @@
 from flask import Blueprint, request, jsonify
-from models.models import db, Users, Staff, User, StaffProfile
-from werkzeug.security import generate_password_hash, check_password_hash
-from flask_jwt_extended import create_access_token, jwt_required, current_user
+from models.models import db, Users, Staff
+from flask_jwt_extended import create_access_token
 
 auth_bp = Blueprint("auth_bp", __name__)
 
-# ── 1. Login (MAD 1: login) ───────────────────────────────────────────────────
+# ── 1. Login ──────────────────────────────────────────────────────────────────
 @auth_bp.route("/login", methods=["POST"])
 def login():
-    """
-    Login endpoint for all roles (Admin, Trek Staff, Trekkers).
-    Accepts username or email and password.
-    Returns JWT access token, role, and user profile data.
-    """
     data = request.get_json() or {}
     identifier = data.get("username") or data.get("email")
     password = data.get("password")
@@ -46,25 +40,9 @@ def login():
     }), 200
 
 
-# ── 2. Logout (MAD 1: logout) ─────────────────────────────────────────────────
-@auth_bp.route("/logout", methods=["GET", "POST"])
-def logout():
-    """
-    Logout endpoint.
-    Client clears stored JWT token and role from localStorage.
-    """
-    return jsonify({"message": "Successfully logged out"}), 200
-
-
-# ── 3. Register (MAD 1: register) ─────────────────────────────────────────────
+# ── 2. Register (Trekkers only) ───────────────────────────────────────────────
 @auth_bp.route("/register", methods=["POST"])
 def register():
-    """
-    Self-registration endpoint:
-    - Allowed ONLY for Users (Trekkers).
-    - Trek Staff accounts are created by Admin only.
-    - Admin account is pre-created only.
-    """
     data = request.get_json() or {}
     username = data.get("username", "").strip()
     name = data.get("name", "").strip()
@@ -107,12 +85,3 @@ def register():
         "message": "User registered successfully! You can now log in.",
         "user": new_user.to_dict()
     }), 201
-
-
-# ── 4. Current User Session Check ─────────────────────────────────────────────
-@auth_bp.route("/whoami", methods=["GET"])
-@jwt_required()
-def whoami():
-    if not current_user:
-        return jsonify({"message": "User not found"}), 404
-    return jsonify(current_user.to_dict()), 200
