@@ -1,9 +1,7 @@
 <script setup>
-import { ref, computed, onMounted } from "vue"
-import { useRouter } from "vue-router"
+import { ref, onMounted } from "vue"
 import axios from "axios"
 
-const router = useRouter()
 const BASE_URL = "http://localhost:5000"
 
 function getToken() {
@@ -14,7 +12,6 @@ const bookings = ref([])
 const loading = ref(true)
 const error = ref("")
 const success = ref("")
-const statusFilter = ref("all")
 
 const showCancelModal = ref(false)
 const cancelingBooking = ref(null)
@@ -23,10 +20,7 @@ async function fetchBookings() {
     loading.value = true
     error.value = ""
     try {
-        const url = statusFilter.value === "all"
-            ? `${BASE_URL}/user/bookings`
-            : `${BASE_URL}/user/bookings?status=${statusFilter.value}`
-        const res = await axios.get(url, {
+        const res = await axios.get(`${BASE_URL}/user/bookings`, {
             headers: { Authorization: "Bearer " + getToken() }
         })
         bookings.value = res.data.bookings || []
@@ -64,132 +58,75 @@ async function confirmCancel() {
     }
 }
 
-function filterBy(status) {
-    statusFilter.value = status
-    fetchBookings()
-}
-
 onMounted(() => {
     fetchBookings()
 })
 </script>
 
 <template>
-    <div>
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h4 class="fw-bold mb-0">My Bookings</h4>
-            <button class="btn btn-primary btn-sm" @click="router.push('/user/browse')">
-                <i class="bi bi-compass me-1"></i>Book New Trek
-            </button>
+    <div class="container py-4">
+        <!-- Notification alert -->
+        <div v-if="success" class="alert py-2 px-3 small border-0 mb-3" style="background-color: #d1f4ff; color: #055160;">
+            {{ success }}
+        </div>
+        <div v-if="error" class="alert alert-danger py-2 px-3 small border-0 mb-3">
+            {{ error }}
         </div>
 
-        <!-- Filter tabs -->
-        <div class="d-flex gap-2 mb-3">
-            <button
-                class="btn btn-sm"
-                :class="statusFilter === 'all' ? 'btn-dark' : 'btn-outline-secondary'"
-                @click="filterBy('all')"
-            >
-                All Bookings
-            </button>
-            <button
-                class="btn btn-sm"
-                :class="statusFilter === 'confirmed' ? 'btn-success' : 'btn-outline-secondary'"
-                @click="filterBy('confirmed')"
-            >
-                Confirmed
-            </button>
-            <button
-                class="btn btn-sm"
-                :class="statusFilter === 'pending' ? 'btn-warning text-dark' : 'btn-outline-secondary'"
-                @click="filterBy('pending')"
-            >
-                Pending
-            </button>
-            <button
-                class="btn btn-sm"
-                :class="statusFilter === 'cancelled' ? 'btn-danger' : 'btn-outline-secondary'"
-                @click="filterBy('cancelled')"
-            >
-                Cancelled
-            </button>
-        </div>
-
-        <!-- Alert messages -->
-        <div v-if="success" class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="bi bi-check-circle-fill me-2"></i>{{ success }}
-            <button type="button" class="btn-close" @click="success = ''"></button>
-        </div>
-        <div v-if="error" class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ error }}
-            <button type="button" class="btn-close" @click="error = ''"></button>
-        </div>
+        <h3 class="fw-bold mb-3">My Bookings</h3>
 
         <div v-if="loading" class="text-center py-5">
             <div class="spinner-border text-primary" role="status"></div>
         </div>
 
-        <!-- Bookings Card & Table matching MAD 1 user_bookings.html with Price and Difficulty columns -->
-        <div v-else class="card shadow-sm border-0 bg-white">
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-bordered table-hover table-sm align-middle mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Trek Name</th>
-                                <th>Location</th>
-                                <th>Difficulty</th>
-                                <th>Price</th>
-                                <th>Booking Date</th>
-                                <th>Start Date</th>
-                                <th>End Date</th>
-                                <th>Status</th>
-                                <th>Guide</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="b in bookings" :key="b.id">
-                                <td class="fw-semibold text-dark">{{ b.trek_name }}</td>
-                                <td><i class="bi bi-geo-alt text-danger me-1"></i>{{ b.trek_location }}</td>
-                                <td>
-                                    <span v-if="b.trek_difficulty?.toLowerCase() === 'easy'" class="badge bg-success">Easy</span>
-                                    <span v-else-if="b.trek_difficulty?.toLowerCase() === 'moderate'" class="badge bg-warning text-dark">Moderate</span>
-                                    <span v-else class="badge bg-danger">{{ b.trek_difficulty || 'N/A' }}</span>
-                                </td>
-                                <td class="fw-bold text-success">₹{{ b.trek_price }}</td>
-                                <td>{{ b.booking_date }}</td>
-                                <td>{{ b.trek_start_date }}</td>
-                                <td>{{ b.trek_end_date }}</td>
-                                <td>
-                                    <span v-if="b.status === 'confirmed'" class="badge bg-success">Confirmed</span>
-                                    <span v-else-if="b.status === 'pending'" class="badge bg-warning text-dark">Pending</span>
-                                    <span v-else-if="b.status === 'cancelled'" class="badge bg-danger">Cancelled</span>
-                                    <span v-else class="badge bg-secondary">{{ b.status }}</span>
-                                </td>
-                                <td>
-                                    <span class="fw-semibold">{{ b.staff_name || 'Unassigned' }}</span>
-                                </td>
-                                <td>
-                                    <button
-                                        v-if="b.status !== 'cancelled'"
-                                        class="btn btn-danger btn-sm"
-                                        @click="promptCancel(b)"
-                                    >
-                                        Cancel Booking
-                                    </button>
-                                    <span v-else class="text-muted small">Cancelled</span>
-                                </td>
-                            </tr>
-                            <tr v-if="bookings.length === 0">
-                                <td colspan="10" class="text-center text-muted py-4">
-                                    <i class="bi bi-journal-x fs-3 d-block mb-2"></i>
-                                    No bookings found in this category. Explore our open treks in <router-link to="/user/browse">Browse Treks</router-link>!
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+        <!-- Bookings Card matching screenshot exactly -->
+        <div v-else class="card shadow-sm border">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light border-bottom">
+                        <tr>
+                            <th class="ps-3">Trek Name</th>
+                            <th>Location</th>
+                            <th>Booking Date</th>
+                            <th>Start Date</th>
+                            <th>End Date</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                            <th class="pe-3">Staff</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="b in bookings" :key="b.id">
+                            <td class="ps-3 fw-semibold">{{ b.trek_name }}</td>
+                            <td>{{ b.trek_location }}</td>
+                            <td>{{ b.booking_date }}</td>
+                            <td>{{ b.trek_start_date }}</td>
+                            <td>{{ b.trek_end_date }}</td>
+                            <td>
+                                <span
+                                    class="badge rounded-pill px-3 py-1"
+                                    :class="b.status?.toLowerCase() === 'confirmed' ? 'bg-success' : (b.status?.toLowerCase() === 'cancelled' ? 'bg-danger' : 'bg-warning text-dark')"
+                                >
+                                    {{ b.status?.toLowerCase() === 'confirmed' ? 'Confirmed' : (b.status?.toLowerCase() === 'cancelled' ? 'Cancelled' : 'Pending') }}
+                                </span>
+                            </td>
+                            <td>
+                                <button
+                                    v-if="b.status?.toLowerCase() !== 'cancelled'"
+                                    class="btn btn-danger btn-sm px-3 py-1"
+                                    @click="promptCancel(b)"
+                                >
+                                    Cancel Booking
+                                </button>
+                                <span v-else class="text-muted small">Cancelled</span>
+                            </td>
+                            <td class="pe-3">{{ b.staff_name || 'N/A' }}</td>
+                        </tr>
+                        <tr v-if="bookings.length === 0">
+                            <td colspan="8" class="text-center text-muted py-4">You have no bookings yet.</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
