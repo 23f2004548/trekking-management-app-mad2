@@ -8,9 +8,9 @@ const BASE_URL = "http://localhost:5000"
 
 const name = ref("")
 const email = ref("")
-const username = ref("")
 const password = ref("")
 const confirmPassword = ref("")
+const role = ref("")
 const error = ref("")
 const success = ref("")
 const loading = ref(false)
@@ -18,6 +18,11 @@ const loading = ref(false)
 async function register() {
     error.value = ""
     success.value = ""
+
+    if (!role.value) {
+        error.value = "Please select a role (User or Staff)"
+        return
+    }
 
     if (password.value !== confirmPassword.value) {
         error.value = "Passwords do not match"
@@ -29,17 +34,21 @@ async function register() {
         const postdata = {
             name: name.value,
             email: email.value,
-            username: username.value,
+            username: email.value,
             password: password.value,
-            role: "user"
+            role: role.value
         }
 
         const res = await axios.post(BASE_URL + "/register", postdata)
         if (res.status === 201) {
-            success.value = "Registered successfully! Redirecting to login..."
+            if (role.value === "staff") {
+                success.value = "Staff registration submitted! Your account is pending admin approval before you can log in."
+            } else {
+                success.value = "Registered successfully! Redirecting to login..."
+            }
             setTimeout(() => {
                 router.push("/login")
-            }, 1200)
+            }, 1800)
         }
     } catch (err) {
         error.value = err.response?.data?.message || "Registration failed"
@@ -67,19 +76,28 @@ async function register() {
                         </div>
 
                         <div class="mb-3">
-                            <input v-model="username" type="text" class="form-control" placeholder="Username" required />
-                        </div>
-
-                        <div class="mb-3">
                             <input v-model="email" type="email" class="form-control" placeholder="Email" required />
                         </div>
 
                         <div class="mb-3">
-                            <input v-model="password" type="password" class="form-control" placeholder="Password (min 6 chars)" minlength="6" required />
+                            <input v-model="password" type="password" class="form-control" placeholder="Password" minlength="6" required />
                         </div>
 
                         <div class="mb-3">
                             <input v-model="confirmPassword" type="password" class="form-control" placeholder="Confirm Password" minlength="6" required />
+                        </div>
+
+                        <div class="mb-3 d-flex align-items-center gap-2">
+                            <label class="text-nowrap mb-0 text-muted small">I am a</label>
+                            <select v-model="role" class="form-select" required>
+                                <option value="" disabled selected>Select Role</option>
+                                <option value="user">User</option>
+                                <option value="staff">Staff</option>
+                            </select>
+                        </div>
+
+                        <div v-if="role === 'staff'" class="alert alert-info py-2 small mb-3">
+                            <i class="bi bi-info-circle me-1"></i> Staff accounts require Admin approval before you can log in.
                         </div>
 
                         <button type="submit" class="btn btn-primary w-100" :disabled="loading">

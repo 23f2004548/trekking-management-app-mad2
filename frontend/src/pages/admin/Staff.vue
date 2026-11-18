@@ -130,17 +130,17 @@ onMounted(() => {
                             <td>{{ s.phone_number }}</td>
                             <td>{{ s.specialization || 'General' }}</td>
                             <td>
-                                <span class="badge" :class="s.status === 'active' ? 'bg-success' : 'bg-danger'">
-                                    {{ s.status }}
+                                <span class="badge text-uppercase" :class="s.status === 'active' ? 'bg-success' : (s.status === 'pending' ? 'bg-warning text-dark' : 'bg-danger')">
+                                    {{ s.status === 'pending' ? 'Pending Approval' : s.status }}
                                 </span>
                             </td>
                             <td>
                                 <button
                                     class="btn btn-sm me-2"
-                                    :class="s.status === 'active' ? 'btn-outline-warning' : 'btn-outline-success'"
+                                    :class="s.status === 'pending' ? 'btn-success' : (s.status === 'active' ? 'btn-outline-warning' : 'btn-outline-success')"
                                     @click="toggleStaffStatus(s.id)"
                                 >
-                                    {{ s.status === 'active' ? 'Blacklist' : 'Activate' }}
+                                    {{ s.status === 'pending' ? '✓ Approve' : (s.status === 'active' ? 'Blacklist' : 'Activate') }}
                                 </button>
                                 <button class="btn btn-sm btn-outline-danger" @click="deleteStaff(s.id)">Delete</button>
                             </td>

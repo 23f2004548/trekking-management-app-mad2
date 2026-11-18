@@ -190,14 +190,26 @@ def add_staff():
 @admin_required
 def change_staff_status(staff_id):
     staff_member = Staff.query.get_or_404(staff_id)
-    if staff_member.status == "active":
-        staff_member.status = "blacklisted"
+    data = request.get_json(silent=True) or {}
+    new_status = data.get("status")
+
+    if new_status:
+        staff_member.status = new_status
         if staff_member.user:
-            staff_member.user.is_active = False
+            staff_member.user.is_active = (new_status.lower() in ["active", "approved"])
     else:
-        staff_member.status = "active"
-        if staff_member.user:
-            staff_member.user.is_active = True
+        if staff_member.status == "pending":
+            staff_member.status = "active"
+            if staff_member.user:
+                staff_member.user.is_active = True
+        elif staff_member.status == "active":
+            staff_member.status = "blacklisted"
+            if staff_member.user:
+                staff_member.user.is_active = False
+        else:
+            staff_member.status = "active"
+            if staff_member.user:
+                staff_member.user.is_active = True
 
     db.session.commit()
     cache.clear()
