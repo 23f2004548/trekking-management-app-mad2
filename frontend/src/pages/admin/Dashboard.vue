@@ -11,7 +11,6 @@ function getToken() {
 }
 
 const stats = ref({})
-const recentTreks = ref([])
 const loading = ref(true)
 
 async function getDashboardData() {
@@ -22,11 +21,6 @@ async function getDashboardData() {
             headers: { Authorization: "Bearer " + curToken }
         })
         stats.value = res.data
-
-        const trekRes = await axios.get(`${BASE_URL}/admin/treks`, {
-            headers: { Authorization: "Bearer " + curToken }
-        })
-        recentTreks.value = trekRes.data.slice(0, 5)
     } catch (err) {
         console.error("Dashboard data load error:", err)
     } finally {
@@ -78,44 +72,6 @@ onMounted(() => {
                 </div>
                 <div class="col-3">
                     <StatsCard card_title="Blacklisted Staff" :card_value="stats.blacklisted_staff || 0" icon="bi-shield-x" />
-                </div>
-            </div>
-
-            <!-- Recent Treks Overview (Page Card) -->
-            <div class="page-card p-3 shadow-sm mb-4">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <div class="section-title">Recent Trekking Routes</div>
-                    <router-link to="/admin/treks" class="small text-decoration-none fw-semibold">View All →</router-link>
-                </div>
-
-                <div v-if="recentTreks.length === 0" class="text-muted text-center py-3">No treks available yet</div>
-                <div v-else class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Trek Name</th>
-                                <th>Location</th>
-                                <th>Difficulty</th>
-                                <th>Slots</th>
-                                <th>Assigned Staff</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="t in recentTreks" :key="t.id">
-                                <td class="fw-semibold">{{ t.name }}</td>
-                                <td>{{ t.location }}</td>
-                                <td><span class="badge bg-secondary">{{ t.difficulty }}</span></td>
-                                <td>{{ t.available_slots }} / {{ t.total_slots }}</td>
-                                <td>{{ t.staff_name }}</td>
-                                <td>
-                                    <span class="badge text-capitalize" :class="t.status === 'upcoming' ? 'bg-primary' : (t.status === 'ongoing' ? 'bg-warning text-dark' : 'bg-success')">
-                                        {{ t.status }}
-                                    </span>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
                 </div>
             </div>
         </div>
