@@ -37,7 +37,7 @@ async function updateStatus(id, newStatus) {
         await axios.post(`${BASE_URL}/admin/bookings/${id}/status`, { status: newStatus }, {
             headers: { Authorization: "Bearer " + token }
         })
-        success.value = "Booking status updated successfully"
+        success.value = "Booking status updated successfully."
         fetchBookings()
     } catch (err) {
         error.value = err.response?.data?.message || "Failed to update status"
@@ -49,14 +49,6 @@ function filterBy(status) {
     fetchBookings()
 }
 
-function getBadge(status) {
-    const s = (status || "").toLowerCase()
-    if (s === "confirmed") return "bg-success"
-    if (s === "pending") return "bg-warning text-dark"
-    if (s === "cancelled") return "bg-danger"
-    return "bg-secondary"
-}
-
 onMounted(() => {
     fetchBookings()
 })
@@ -64,119 +56,137 @@ onMounted(() => {
 
 <template>
     <div class="container py-4">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h2 class="fw-bold mb-0">Booking Records & History</h2>
-            </div>
-        </div>
-
-        <!-- Filter bar -->
-        <div class="card shadow-sm border-0 mb-4 bg-white">
-            <div class="card-body p-3">
-                <div class="row g-2 align-items-center">
-                    <div class="col-md-6 d-flex gap-2">
-                        <button
-                            class="btn btn-sm"
-                            :class="statusFilter === 'all' ? 'btn-dark' : 'btn-outline-secondary'"
-                            @click="filterBy('all')"
-                        >
-                            All ({{ bookings.length }})
-                        </button>
-                        <button
-                            class="btn btn-sm"
-                            :class="statusFilter === 'confirmed' ? 'btn-success' : 'btn-outline-secondary'"
-                            @click="filterBy('confirmed')"
-                        >
-                            Confirmed
-                        </button>
-                        <button
-                            class="btn btn-sm"
-                            :class="statusFilter === 'pending' ? 'btn-warning text-dark' : 'btn-outline-secondary'"
-                            @click="filterBy('pending')"
-                        >
-                            Pending
-                        </button>
-                        <button
-                            class="btn btn-sm"
-                            :class="statusFilter === 'cancelled' ? 'btn-danger' : 'btn-outline-secondary'"
-                            @click="filterBy('cancelled')"
-                        >
-                            Cancelled
-                        </button>
-                    </div>
-                    <div class="col-md-6">
-                        <form @submit.prevent="fetchBookings" class="d-flex gap-2">
-                            <input
-                                type="text"
-                                v-model="searchTerm"
-                                class="form-control form-control-sm"
-                                placeholder="Search by trekker name, email, or trek route..."
-                            />
-                            <button type="submit" class="btn btn-sm btn-outline-primary">
-                                <i class="bi bi-search"></i>
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div v-if="success" class="alert alert-success py-2 small alert-dismissible">
+        <!-- Success/Error alert banner matching screenshot -->
+        <div v-if="success" class="alert py-2 px-3 small border-0 mb-3" style="background-color: #d1f4ff; color: #055160;">
             {{ success }}
-            <button type="button" class="btn-close btn-sm" @click="success = ''"></button>
         </div>
-        <div v-if="error" class="alert alert-danger py-2 small alert-dismissible">
+        <div v-if="error" class="alert alert-danger py-2 px-3 small border-0 mb-3">
             {{ error }}
-            <button type="button" class="btn-close btn-sm" @click="error = ''"></button>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="fw-bold mb-0">Bookings</h3>
+        </div>
+
+        <!-- Filter tabs matching MAD 1 style -->
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <ul class="nav nav-tabs">
+                <li class="nav-item">
+                    <button
+                        class="nav-link"
+                        :class="{ active: statusFilter === 'all' }"
+                        @click="filterBy('all')"
+                    >
+                        All ({{ bookings.length }})
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button
+                        class="nav-link"
+                        :class="{ active: statusFilter === 'confirmed' }"
+                        @click="filterBy('confirmed')"
+                    >
+                        Confirmed
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button
+                        class="nav-link"
+                        :class="{ active: statusFilter === 'pending' }"
+                        @click="filterBy('pending')"
+                    >
+                        Pending
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button
+                        class="nav-link"
+                        :class="{ active: statusFilter === 'cancelled' }"
+                        @click="filterBy('cancelled')"
+                    >
+                        Cancelled
+                    </button>
+                </li>
+            </ul>
+
+            <form @submit.prevent="fetchBookings" class="d-flex gap-2">
+                <input
+                    type="text"
+                    v-model="searchTerm"
+                    class="form-control form-control-sm"
+                    placeholder="Search by trekker, email, or trek..."
+                    style="width: 250px;"
+                />
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="bi bi-search"></i>
+                </button>
+            </form>
         </div>
 
         <div v-if="loading" class="text-center py-5">
             <div class="spinner-border text-primary" role="status"></div>
         </div>
 
-        <div v-else class="card shadow-sm border-0">
+        <div v-else class="card shadow-sm border">
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
+                    <thead class="table-light border-bottom">
                         <tr>
-                            <th>#</th>
-                            <th>Trekker</th>
-                            <th>Email</th>
-                            <th>Trek Route</th>
-                            <th>Location</th>
-                            <th>Trek Dates</th>
-                            <th>Booked On</th>
+                            <th class="ps-3">ID</th>
+                            <th>User Name</th>
+                            <th>Trek Name</th>
+                            <th>Booking Date</th>
                             <th>Status</th>
-                            <th>Change Status</th>
+                            <th class="text-center pe-3">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr v-for="b in bookings" :key="b.id">
-                            <td>{{ b.id }}</td>
+                            <td class="ps-3">{{ b.id }}</td>
                             <td class="fw-semibold">{{ b.user_name || '—' }}</td>
-                            <td>{{ b.user_email || '—' }}</td>
-                            <td class="fw-semibold">{{ b.trek_name || '—' }}</td>
-                            <td>{{ b.trek_location || '—' }}</td>
-                            <td class="small">{{ b.trek_start_date }} → {{ b.trek_end_date }}</td>
-                            <td class="small">{{ b.booking_date }}</td>
+                            <td>{{ b.trek_name || '—' }}</td>
+                            <td>{{ b.booking_date }}</td>
                             <td>
-                                <span class="badge" :class="getBadge(b.status)">{{ b.status }}</span>
-                            </td>
-                            <td>
-                                <select
-                                    class="form-select form-select-sm"
-                                    style="width: 130px;"
-                                    :value="b.status"
-                                    @change="updateStatus(b.id, $event.target.value)"
+                                <span
+                                    class="badge rounded-pill px-3 py-1"
+                                    :class="b.status?.toLowerCase() === 'confirmed' ? 'bg-success' : (b.status?.toLowerCase() === 'pending' ? 'bg-primary' : 'bg-danger')"
                                 >
-                                    <option value="pending">pending</option>
-                                    <option value="confirmed">confirmed</option>
-                                    <option value="cancelled">cancelled</option>
-                                </select>
+                                    {{ b.status?.toLowerCase() === 'confirmed' ? 'Confirmed' : (b.status?.toLowerCase() === 'pending' ? 'Pending' : 'Cancelled') }}
+                                </span>
+                            </td>
+                            <td class="text-center pe-3">
+                                <template v-if="b.status?.toLowerCase() === 'pending'">
+                                    <button
+                                        class="btn btn-sm btn-success px-2 py-1 me-1"
+                                        title="Confirm Booking"
+                                        @click="updateStatus(b.id, 'confirmed')"
+                                    >
+                                        Confirm
+                                    </button>
+                                    <button
+                                        class="btn btn-sm btn-danger px-2 py-1"
+                                        title="Cancel Booking"
+                                        @click="updateStatus(b.id, 'cancelled')"
+                                    >
+                                        Cancel
+                                    </button>
+                                </template>
+                                <template v-else-if="b.status?.toLowerCase() === 'confirmed'">
+                                    <button
+                                        class="btn btn-sm btn-danger px-2 py-1"
+                                        title="Cancel Booking"
+                                        @click="updateStatus(b.id, 'cancelled')"
+                                    >
+                                        Cancel
+                                    </button>
+                                </template>
+                                <template v-else>
+                                    <span class="text-muted small">None</span>
+                                </template>
                             </td>
                         </tr>
                         <tr v-if="bookings.length === 0">
-                            <td colspan="9" class="text-center text-muted py-3">No booking records found</td>
+                            <td colspan="6" class="text-center text-muted py-4">No bookings found</td>
                         </tr>
                     </tbody>
                 </table>

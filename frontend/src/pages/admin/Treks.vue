@@ -134,65 +134,73 @@ onMounted(() => {
 
 <template>
     <div class="container py-4">
-        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-            <div>
-                <h2 class="fw-bold mb-0">Trekking Routes Management</h2>
-            </div>
-            <button class="btn btn-primary" @click="openAddModal">+ Add New Trek</button>
+        <!-- Success/Error alert banner matching screenshot -->
+        <div v-if="success" class="alert py-2 px-3 small border-0 mb-3" style="background-color: #d1f4ff; color: #055160;">
+            {{ success }}
+        </div>
+        <div v-if="error" class="alert alert-danger py-2 px-3 small border-0 mb-3">
+            {{ error }}
         </div>
 
-        <div v-if="success" class="alert alert-success py-2 small alert-dismissible">
-            {{ success }}
-            <button type="button" class="btn-close btn-sm" @click="success = ''"></button>
-        </div>
-        <div v-if="error" class="alert alert-danger py-2 small alert-dismissible">
-            {{ error }}
-            <button type="button" class="btn-close btn-sm" @click="error = ''"></button>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="fw-bold mb-0">Treks</h3>
+            <button class="btn btn-primary btn-sm px-3" @click="openAddModal">+ Add New Trek</button>
         </div>
 
         <div v-if="loading" class="text-center py-5">
             <div class="spinner-border text-primary" role="status"></div>
         </div>
 
-        <div v-else class="card shadow-sm border-0">
+        <div v-else class="card shadow-sm border">
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
+                    <thead class="table-light border-bottom">
                         <tr>
-                            <th>#</th>
-                            <th>Name</th>
+                            <th class="ps-3">ID</th>
+                            <th>Trek Name</th>
                             <th>Location</th>
                             <th>Difficulty</th>
-                            <th>Duration</th>
-                            <th>Slots</th>
-                            <th>Price</th>
-                            <th>Assigned Staff</th>
+                            <th>Total Slots</th>
+                            <th>Available Slots</th>
                             <th>Status</th>
-                            <th>Actions</th>
+                            <th class="text-center pe-3">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr v-for="t in treks" :key="t.id">
-                            <td>{{ t.id }}</td>
+                            <td class="ps-3">{{ t.id }}</td>
                             <td class="fw-semibold">{{ t.name }}</td>
                             <td>{{ t.location }}</td>
-                            <td><span class="badge bg-secondary">{{ t.difficulty }}</span></td>
-                            <td>{{ t.duration }} days</td>
-                            <td>{{ t.available_slots }} / {{ t.total_slots }}</td>
-                            <td>₹{{ t.price }}</td>
-                            <td>{{ t.staff_name }}</td>
+                            <td>{{ t.difficulty }}</td>
+                            <td>{{ t.total_slots }}</td>
+                            <td>{{ t.available_slots }}</td>
                             <td>
-                                <span class="badge text-capitalize" :class="t.status === 'upcoming' ? 'bg-primary' : (t.status === 'ongoing' ? 'bg-warning text-dark' : 'bg-success')">
-                                    {{ t.status }}
+                                <span
+                                    class="badge rounded-pill px-3 py-1"
+                                    :class="t.status?.toLowerCase() === 'upcoming' ? 'bg-primary' : (t.status?.toLowerCase() === 'ongoing' ? 'bg-success' : 'bg-danger')"
+                                >
+                                    {{ t.status?.toLowerCase() === 'upcoming' ? 'Upcoming' : (t.status?.toLowerCase() === 'ongoing' ? 'Ongoing' : 'Completed') }}
                                 </span>
                             </td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-primary me-2" @click="openEditModal(t)">Edit</button>
-                                <button class="btn btn-sm btn-outline-danger" @click="deleteTrek(t.id)">Delete</button>
+                            <td class="text-center pe-3">
+                                <button
+                                    class="btn btn-outline-secondary btn-sm px-2 py-1 me-1"
+                                    title="Edit Trek"
+                                    @click="openEditModal(t)"
+                                >
+                                    <i class="bi bi-pencil-square text-success"></i>
+                                </button>
+                                <button
+                                    class="btn btn-outline-secondary btn-sm px-2 py-1"
+                                    title="Delete Trek"
+                                    @click="deleteTrek(t.id)"
+                                >
+                                    <i class="bi bi-trash text-danger"></i>
+                                </button>
                             </td>
                         </tr>
                         <tr v-if="treks.length === 0">
-                            <td colspan="10" class="text-center text-muted py-3">No treks available</td>
+                            <td colspan="8" class="text-center text-muted py-4">No treks found</td>
                         </tr>
                     </tbody>
                 </table>
