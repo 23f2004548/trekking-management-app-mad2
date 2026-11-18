@@ -8,6 +8,7 @@ const token = localStorage.getItem("token")
 const users = ref([])
 const loading = ref(true)
 const error = ref("")
+const success = ref("")
 
 async function fetchUsers() {
     loading.value = true
@@ -24,25 +25,31 @@ async function fetchUsers() {
 }
 
 async function toggleUserActive(id) {
+    error.value = ""
+    success.value = ""
     try {
-        await axios.post(`${BASE_URL}/admin/users/${id}/toggle-active`, {}, {
+        const res = await axios.post(`${BASE_URL}/admin/users/${id}/toggle-active`, {}, {
             headers: { Authorization: "Bearer " + token }
         })
+        success.value = res.data.message || "User status updated successfully."
         fetchUsers()
     } catch (err) {
-        alert("Failed to update user status")
+        error.value = err.response?.data?.message || "Failed to update user status"
     }
 }
 
 async function deleteUser(id) {
     if (!confirm("Are you sure you want to delete this user?")) return
+    error.value = ""
+    success.value = ""
     try {
-        await axios.delete(`${BASE_URL}/admin/users/${id}`, {
+        const res = await axios.delete(`${BASE_URL}/admin/users/${id}`, {
             headers: { Authorization: "Bearer " + token }
         })
+        success.value = res.data.message || "User deleted successfully."
         fetchUsers()
     } catch (err) {
-        alert("Failed to delete user")
+        error.value = err.response?.data?.message || "Failed to delete user"
     }
 }
 
@@ -53,57 +60,69 @@ onMounted(() => {
 
 <template>
     <div class="container py-4">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h2 class="fw-bold mb-0">Registered Trekkers</h2>
-            </div>
+        <!-- Notification alert matching screenshot -->
+        <div v-if="success" class="alert py-2 px-3 small border-0 mb-3" style="background-color: #d1f4ff; color: #055160;">
+            {{ success }}
+        </div>
+        <div v-if="error" class="alert alert-danger py-2 px-3 small border-0 mb-3">
+            {{ error }}
         </div>
 
-        <div v-if="error" class="alert alert-danger py-2 small">{{ error }}</div>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="fw-bold mb-0">Users</h3>
+        </div>
 
         <div v-if="loading" class="text-center py-5">
             <div class="spinner-border text-primary" role="status"></div>
         </div>
 
-        <div v-else class="card shadow-sm border-0">
+        <div v-else class="card shadow-sm border">
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
+                    <thead class="table-light border-bottom">
                         <tr>
-                            <th>#</th>
-                            <th>Name</th>
-                            <th>Username</th>
+                            <th class="ps-3">ID</th>
+                            <th>Full Name</th>
                             <th>Email</th>
-                            <th>Joined</th>
+                            <th>Registration Date</th>
                             <th>Status</th>
-                            <th>Actions</th>
+                            <th class="text-center pe-3">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr v-for="u in users" :key="u.id">
-                            <td>{{ u.id }}</td>
+                            <td class="ps-3">{{ u.id }}</td>
                             <td class="fw-semibold">{{ u.name }}</td>
-                            <td>{{ u.username }}</td>
                             <td>{{ u.email }}</td>
                             <td>{{ u.created_at || '—' }}</td>
                             <td>
-                                <span class="badge" :class="u.is_active ? 'bg-success' : 'bg-secondary'">
-                                    {{ u.is_active ? 'Active' : 'Deactivated' }}
+                                <span
+                                    class="badge rounded-pill px-3 py-1"
+                                    :class="u.is_active ? 'bg-primary' : 'bg-danger'"
+                                >
+                                    {{ u.is_active ? 'Active' : 'Blocked' }}
                                 </span>
                             </td>
-                            <td>
+                            <td class="text-center pe-3">
                                 <button
-                                    class="btn btn-sm me-2"
+                                    class="btn btn-sm px-2 py-1 me-2"
                                     :class="u.is_active ? 'btn-outline-warning' : 'btn-outline-success'"
+                                    :title="u.is_active ? 'Deactivate User' : 'Activate User'"
                                     @click="toggleUserActive(u.id)"
                                 >
-                                    {{ u.is_active ? 'Deactivate' : 'Activate' }}
+                                    <i class="bi" :class="u.is_active ? 'bi-slash-circle' : 'bi-check-circle'"></i>
                                 </button>
-                                <button class="btn btn-sm btn-outline-danger" @click="deleteUser(u.id)">Delete</button>
+                                <button
+                                    class="btn btn-sm btn-outline-danger px-2 py-1"
+                                    title="Delete User"
+                                    @click="deleteUser(u.id)"
+                                >
+                                    <i class="bi bi-trash"></i>
+                                </button>
                             </td>
                         </tr>
                         <tr v-if="users.length === 0">
-                            <td colspan="7" class="text-center text-muted py-3">No trekkers registered yet</td>
+                            <td colspan="6" class="text-center text-muted py-4">No users found</td>
                         </tr>
                     </tbody>
                 </table>
