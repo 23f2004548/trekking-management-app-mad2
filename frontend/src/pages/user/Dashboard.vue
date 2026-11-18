@@ -29,32 +29,39 @@ async function fetchDashboard() {
         const res = await axios.get(`${BASE_URL}/user/dashboard`, {
             headers: { Authorization: "Bearer " + token }
         })
-        stats.value = res.data.stats
+        stats.value = res.data.stats || stats.value
         if (res.data.user_name) {
             userName.value = res.data.user_name
         }
-
-        await nextTick()
-        renderChart(stats.value.diff_labels, stats.value.diff_counts)
     } catch (err) {
         console.error("Failed to load user dashboard:", err)
     } finally {
         loading.value = false
     }
+
+    await nextTick()
+    renderChart(stats.value.diff_labels, stats.value.diff_counts)
 }
 
 function renderChart(labels, counts) {
-    if (!chartCanvas.value) return
+    const canvas = chartCanvas.value || document.getElementById("TrekkingHistory")
+    if (!canvas) return
     if (chartInstance) {
         chartInstance.destroy()
     }
-    chartInstance = new Chart(chartCanvas.value, {
+
+    const dataValues = counts && counts.length ? counts : [0, 0, 0]
+    const hasData = dataValues.some(v => v > 0)
+
+    chartInstance = new Chart(canvas, {
         type: "doughnut",
         data: {
             labels: labels && labels.length ? labels : ["Easy", "Moderate", "Hard"],
             datasets: [{
-                data: counts && counts.some(c => c > 0) ? counts : [0, 0, 0],
-                backgroundColor: ["#198754", "#ffc107", "#dc3545"],
+                data: hasData ? dataValues : [1, 1, 1],
+                backgroundColor: hasData
+                    ? ["#198754", "#ffc107", "#dc3545"]
+                    : ["#e9ecef", "#dee2e6", "#ced4da"],
                 borderWidth: 1
             }]
         },
@@ -62,7 +69,15 @@ function renderChart(labels, counts) {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { position: "bottom" }
+                legend: { position: "bottom" },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            if (!hasData) return " No bookings yet"
+                            return ` ${context.label}: ${context.raw} bookings`
+                        }
+                    }
+                }
             }
         }
     })
@@ -80,7 +95,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <div>
+    <div class="container py-4">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h4 class="fw-bold mb-0">Welcome, {{ userName }}!</h4>
             <button class="btn btn-primary btn-sm" @click="router.push('/user/browse')">
@@ -119,13 +134,13 @@ onBeforeUnmount(() => {
             </div>
 
             <!-- Bookings by Difficulty Chart matching MAD 1 user_dashboard.html -->
-            <div class="row g-3 mb-4">
+            <div class="row g-2 mb-4">
                 <div class="col-12">
-                    <div class="card shadow-sm border-0 bg-white">
+                    <div class="card shadow-sm border-0 bg-white h-100">
                         <div class="card-body p-4">
                             <h5 class="fw-bold mb-3 text-center">Bookings by Difficulty</h5>
-                            <div style="height: 250px; position: relative;">
-                                <canvas ref="chartCanvas"></canvas>
+                            <div style="height: 260px; position: relative;">
+                                <canvas id="TrekkingHistory" ref="chartCanvas"></canvas>
                             </div>
                         </div>
                     </div>
