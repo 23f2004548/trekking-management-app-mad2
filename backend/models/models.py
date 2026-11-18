@@ -23,18 +23,10 @@ class Users(BaseModel):
     role = db.Column(db.String(20), nullable=False, default='user')  # admin, staff, user
     is_active = db.Column(db.Boolean, default=True)
 
-    # 1-to-1 relationship with Staff (MAD 1: user.staff, MAD 2: user.staff_profile)
+    # 1-to-1 relationship with Staff
     staff = db.relationship("Staff", backref="user", uselist=False, cascade="all,delete-orphan")
     # 1-to-many relationship with Bookings
     bookings = db.relationship("Bookings", backref="user", cascade="all,delete-orphan")
-
-    @property
-    def staff_profile(self):
-        return self.staff
-
-    @staff_profile.setter
-    def staff_profile(self, val):
-        self.staff = val
 
     def set_password(self, raw_password):
         self.password = generate_password_hash(raw_password)
@@ -106,14 +98,6 @@ class Treks(BaseModel):
     # 1-to-many relationship with Bookings
     bookings = db.relationship("Bookings", backref="trek", cascade="all,delete-orphan")
 
-    @property
-    def staff(self):
-        return self.assigned_staff
-
-    @staff.setter
-    def staff(self, val):
-        self.assigned_staff = val
-
     def to_dict(self):
         return {
             "id": self.id,
@@ -167,10 +151,3 @@ class Bookings(BaseModel):
             "payment_status": self.payment_status,
             "created_at": self.created_at.strftime("%Y-%m-%d %H:%M") if self.created_at else None
         }
-
-
-# ── Full Backwards Compatibility Aliases ──────────────────────────────────────
-User = Users
-Trek = Treks
-StaffProfile = Staff
-Booking = Bookings
