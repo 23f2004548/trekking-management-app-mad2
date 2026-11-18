@@ -21,7 +21,10 @@ backend/routes/__pycache__/
 instance/
 backend/instance/
 *.sqlite3
+*.sqlite
 *.db
+db
+
 
 # Celery
 celerybeat-schedule*
