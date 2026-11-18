@@ -4,10 +4,19 @@ from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
 
-SMTP_SERVER_HOST = "localhost"
-SMTP_SERVER_PORT = 1025 
-SENDER_ADDRESS = "noreply@trekkingapp.com"
-SENDER_PASSWORD = "password"
+# MailHog SMTP Configuration
+# MailHog SMTP server listens on port 1025.
+# MailHog Web UI inbox is viewable at http://localhost:8025.
+try:
+    from config import LocalDevelopmentConfig
+    SMTP_SERVER_HOST = getattr(LocalDevelopmentConfig, 'SMTP_SERVER', 'localhost')
+    SMTP_SERVER_PORT = getattr(LocalDevelopmentConfig, 'SMTP_PORT', 1025)
+    SENDER_ADDRESS = getattr(LocalDevelopmentConfig, 'SENDER_EMAIL', 'noreply@trekkingapp.com')
+except Exception:
+    SMTP_SERVER_HOST = "localhost"
+    SMTP_SERVER_PORT = 1025 
+    SENDER_ADDRESS = "noreply@trekkingapp.com"
+
 
 def send_email(to_address, subject, message, content="html", attachment_file=None):
     try:
