@@ -137,7 +137,6 @@ onMounted(() => {
         <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
             <div>
                 <h2 class="fw-bold mb-0">Trekking Routes Management</h2>
-                <p class="text-muted small mb-0">Create, edit, remove routes and assign guides</p>
             </div>
             <button class="btn btn-primary" @click="openAddModal">+ Add New Trek</button>
         </div>

@@ -187,8 +187,7 @@ onBeforeUnmount(() => {
     <div class="container py-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <h2 class="fw-bold mb-1">Trekking Statistics & Reports</h2>
-                <p class="text-muted small mb-0">Comprehensive metrics on treks, bookings, and route popularity</p>
+                <h2 class="fw-bold mb-0">Trekking Statistics & Reports</h2>
             </div>
             <div class="d-flex gap-2">
                 <button

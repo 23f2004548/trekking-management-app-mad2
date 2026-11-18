@@ -67,7 +67,6 @@ onMounted(() => {
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h2 class="fw-bold mb-0">Booking Records & History</h2>
-                <p class="text-muted small mb-0">View all user bookings, track status progression, and manage expedition records</p>
             </div>
         </div>
 

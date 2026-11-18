@@ -29,8 +29,7 @@ async function executeSearch() {
 
 <template>
     <div class="container py-4">
-        <h2 class="fw-bold mb-1">Search Database</h2>
-        <p class="text-muted small mb-4">Find treks, staff, or trekkers by name or numerical ID</p>
+        <h2 class="fw-bold mb-4">Search Database</h2>
 
         <!-- Search Input Bar -->
         <div class="card p-3 shadow-sm border-0 mb-4">

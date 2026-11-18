@@ -90,7 +90,6 @@ onMounted(() => {
         <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
             <div>
                 <h2 class="fw-bold mb-0">Trek Staff Management</h2>
-                <p class="text-muted small mb-0">Create guides and manage staff authorization</p>
             </div>
             <button class="btn btn-primary" @click="showModal = true">+ Add Staff Member</button>
         </div>
